@@ -31,3 +31,7 @@ a = a.reshape(-1, 4, 2)
 b = b.reshape(-1, 4, 2)
 iou = quad_iou.calculateIoU(a, b)
 ```
+
+## Comparison with shapely
+
+One of the ways to calculate iou for quadrilaterals is to use `Shapely` library. You can see the time comparison between the library and this implementation for 300x200 quadrilaterals by running `python comparison.py`
