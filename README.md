@@ -1,4 +1,4 @@
-# IoU Calculation for Quadrilaterals(CUDA Kernel)
+# IoU(Intersection over Union) Calculation for Quadrilaterals(CUDA Kernel)
 
 Cuda kernel for calculating IoU for quadrilaterals. It can calculate IoU either for 1->1 match or N->M match, returning an iou matrix with N rows and M columns. Torch CUDA extensions are used for running the compiled kernels. 
 
