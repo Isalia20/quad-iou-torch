@@ -39,7 +39,7 @@ def generate_convex_quads(num_quads_to_generate: int):
     return quads
 
 def main():
-    quads_1 = np.array(generate_convex_quads(1800))
+    quads_1 = np.array(generate_convex_quads(2000))
     quads_2 = np.array(generate_convex_quads(200))
     t1 = time.time()
     quads_1_torch = torch.tensor(quads_1).cuda()
@@ -49,11 +49,11 @@ def main():
     print("TIME TAKEN FOR CALCULATING IOU MATRIX WITH TORCH ", t2 - t1)
     iou_matrix = np.zeros((len(quads_1), len(quads_2)))
     t1 = time.time()
-    for i, quad_1 in enumerate(quads_1):
-        polygon_i = Polygon(quad_1)
-        for j, quad_2 in enumerate(quads_2):
-            polygon_j = Polygon(quad_2)
-            iou = calc_iou_poly(polygon_i, polygon_j)
+    quads_1_poly = [Polygon(i) for i in quads_1]
+    quads_2_poly = [Polygon(i) for i in quads_2]
+    for i, quad_1_poly in enumerate(quads_1_poly):
+        for j, quad_2_poly in enumerate(quads_2_poly):
+            iou = calc_iou_poly(quad_1_poly, quad_2_poly)
             iou_matrix[i][j] = iou
     t2 = time.time()
     print("TIME TAKEN FOR CALCULATING IOU MATRIX WITH SHAPELY ", t2 - t1)
