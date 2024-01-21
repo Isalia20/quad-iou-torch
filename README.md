@@ -10,7 +10,7 @@ Cuda kernel for calculating IoU for quadrilaterals. It can calculate IoU either 
 1. Clone the repo.
 2. Go into the folder.
 3. Run `python setup.py install`
-4. Run `python usage.py` to test it out. Expected output is `0.25`
+4. Run `python tryout_scripts/usage.py` to test it out. Expected output is `0.25`
 
 ## Example usage:
 ```
@@ -34,4 +34,4 @@ iou = quad_iou.calculateIoU(a, b)
 
 ## Comparison with Shapely library
 
-One of the ways to calculate iou for quadrilaterals is to use `Shapely` library. You can see the time comparison between the library and this implementation for 300x200 quadrilaterals by running `python comparison.py`
+One of the ways to calculate iou for quadrilaterals is to use `Shapely` library. You can see the time comparison between the library and this implementation for 300x200 quadrilaterals by running `python tryout_scripts/comparison.py`
