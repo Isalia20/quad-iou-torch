@@ -39,8 +39,8 @@ def generate_convex_quads(num_quads_to_generate: int):
     return quads
 
 def main():
-    quads_1 = np.array(generate_convex_quads(200))
-    quads_2 = np.array(generate_convex_quads(300))
+    quads_1 = np.array(generate_convex_quads(1800))
+    quads_2 = np.array(generate_convex_quads(200))
     t1 = time.time()
     quads_1_torch = torch.tensor(quads_1).cuda()
     quads_2_torch = torch.tensor(quads_2).cuda()
