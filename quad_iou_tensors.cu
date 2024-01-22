@@ -13,12 +13,11 @@ enum class Coordinate {
 };
 
 template <typename scalar_t>
-__device__ int findPointsInside(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0, 
-                                const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1, 
-                                at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> inside_points, 
-                                int maxPoints) {
+__device__ inline void findPointsInside(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0, 
+                                        const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1, 
+                                        at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> inside_points, 
+                                        int maxPoints) {
     int numInsidePoints = 0;
-
     for (int i = 0; i < 4; i++) {
         Point<scalar_t> quad_0_point = {quad_0[i][0], quad_0[i][1]};
         if (isPointInsideQuadrilateral(quad_0_point, quad_1) == 1) {
@@ -37,14 +36,13 @@ __device__ int findPointsInside(const at::TensorAccessor<scalar_t, 2, at::Restri
             }
         }
     }
-    return numInsidePoints;
 }
 
 template <typename scalar_t>
-__device__ int findIntersectionPoints(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0, 
-                                      const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1, 
-                                      at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> intersections, 
-                                      int maxIntersections) {
+__device__ inline void findIntersectionPoints(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0, 
+                                              const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1, 
+                                              at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> intersections, 
+                                              int maxIntersections) {
     int numIntersections = 0;
     for (int i = 0; i < 4; ++i) {
         for (int j = 0; j < 4; ++j) {
@@ -71,18 +69,17 @@ __device__ int findIntersectionPoints(const at::TensorAccessor<scalar_t, 2, at::
             }
         }
     }
-    return numIntersections;
 }
 
 template <typename scalar_t>
-__device__ int orientation(const Point<scalar_t>& p, const Point<scalar_t>& q, const Point<scalar_t>& r) {
+__device__ inline int orientation(const Point<scalar_t>& p, const Point<scalar_t>& q, const Point<scalar_t>& r) {
     scalar_t val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
     if (fabsf(val) < 1e-10) return 0;  // colinear
     return (val > 0) ? 1 : 2;  // clockwise
 }
 
 template <typename scalar_t>
-__device__ scalar_t findMaxQuadCoordinate(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> box, Coordinate coord){
+__device__ inline scalar_t findMaxQuadCoordinate(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> box, Coordinate coord){
     // Find the maximum x-coordinate or y-coordinate of the quadrilateral based on the coord value
     scalar_t max_value = box[0][static_cast<int>(coord)];
     for (int i = 1; i < 4; ++i) {
@@ -94,7 +91,29 @@ __device__ scalar_t findMaxQuadCoordinate(const at::TensorAccessor<scalar_t, 2, 
 }
 
 template <typename scalar_t>
-__device__ int isPointInsideQuadrilateral(const Point<scalar_t>& point_to_check, const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> box) {
+__device__ inline scalar_t* findMinMaxQuadCoordinate(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> box, Coordinate coord){
+    // Find the maximum x-coordinate or y-coordinate of the quadrilateral based on the coord value
+    // First value will be minimum and second will be maximum, hence min_max
+    static __device__ scalar_t min_max_values[2];
+
+    min_max_values[0] = box[0][static_cast<int>(coord)];
+    min_max_values[1] = box[0][static_cast<int>(coord)];
+
+    for (int i = 1; i < 4; ++i) {
+        // Min value
+        if (box[i][static_cast<int>(coord)] < min_max_values[0]) {
+            min_max_values[0] = box[i][static_cast<int>(coord)];
+        }
+        // Max value
+        if (box[i][static_cast<int>(coord)] > min_max_values[1]) {
+            min_max_values[1] = box[i][static_cast<int>(coord)];
+        }
+    }
+    return min_max_values;
+}
+
+template <typename scalar_t>
+__device__ inline int isPointInsideQuadrilateral(const Point<scalar_t>& point_to_check, const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> box) {
     scalar_t max_x = findMaxQuadCoordinate(box, Coordinate::X);
     scalar_t max_y = findMaxQuadCoordinate(box, Coordinate::Y);
     // If the point's x-coordinate is greater than the max x-coordinate, it's outside
@@ -120,7 +139,7 @@ __device__ int isPointInsideQuadrilateral(const Point<scalar_t>& point_to_check,
 }
 
 template <typename scalar_t>
-__device__ bool doIntersect(const Point<scalar_t>& p1, const Point<scalar_t>& q1, const Point<scalar_t>& p2, const Point<scalar_t>& q2, Point<scalar_t>& intersection) {
+__device__ inline bool doIntersect(const Point<scalar_t>& p1, const Point<scalar_t>& q1, const Point<scalar_t>& p2, const Point<scalar_t>& q2, Point<scalar_t>& intersection) {
     // Find the four orientations needed for general and
     // special cases
     int o1 = orientation(p1, q1, p2);
@@ -181,22 +200,22 @@ __device__ bool doIntersect(const Point<scalar_t>& p1, const Point<scalar_t>& q1
 }
 
 template <typename scalar_t>
-__device__ bool onSegment(const Point<scalar_t>& p, const Point<scalar_t>& q, const Point<scalar_t>& r) {
+__device__ inline bool onSegment(const Point<scalar_t>& p, const Point<scalar_t>& q, const Point<scalar_t>& r) {
     return q.x <= max(p.x, r.x) && q.x >= min(p.x, r.x) &&
            q.y <= max(p.y, r.y) && q.y >= min(p.y, r.y);
 }
 
 template <typename scalar_t>
-__device__ bool arePointsEqual(const Point<scalar_t>& p1, const Point<scalar_t>& p2) {
+__device__ inline bool arePointsEqual(const Point<scalar_t>& p1, const Point<scalar_t>& p2) {
     return fabsf(p1.x - p2.x) < 1e-10 && fabsf(p1.y - p2.y) < 1e-10;
 }
 
 template <typename scalar_t>
-__device__ Point<scalar_t> findCentroid(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> points) {
+__device__ inline Point<scalar_t> findCentroid(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> points) {
     Point<scalar_t> centroid = {0.0, 0.0};
     int valid_point_counter = 0;
     for (int i = 0; i < points.size(0); i++) {
-        if (points[i][0] != -1.0 && points[i][1] != -1.0){
+        if (isinf(points[i][0]) && isinf(points[i][1])){
             centroid.x += points[i][0];
             centroid.y += points[i][1];
             valid_point_counter++;
@@ -208,11 +227,11 @@ __device__ Point<scalar_t> findCentroid(const at::TensorAccessor<scalar_t, 2, at
 }
 
 template <typename scalar_t>
-__device__ Point<scalar_t> findCentroid(torch::PackedTensorAccessor32<scalar_t,2,torch::RestrictPtrTraits> points) {
+__device__ inline Point<scalar_t> findCentroid(torch::PackedTensorAccessor32<scalar_t,2,torch::RestrictPtrTraits> points) {
     Point<scalar_t> centroid = {0.0, 0.0};
     int valid_point_counter = 0;
     for (int i = 0; i < points.size(0); i++) {
-        if (points[i][0] != -1.0 && points[i][1] != -1.0){
+        if (isinf(points[i][0]) && isinf(points[i][1])){
             centroid.x += points[i][0];
             centroid.y += points[i][1];
             valid_point_counter++;
@@ -224,43 +243,14 @@ __device__ Point<scalar_t> findCentroid(torch::PackedTensorAccessor32<scalar_t,2
 }
 
 template <typename scalar_t>
-__device__ scalar_t polygonArea(const torch::PackedTensorAccessor32<scalar_t, 2, torch::RestrictPtrTraits> &polygon) {
+__device__ inline scalar_t polygonArea(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> polygon) {
     scalar_t area = 0;
     int n = polygon.size(0);
     int j = 0; // Index of the previous valid vertex
 
     // Initialize the previous valid vertex
     for (int i = 0; i < n; ++i) {
-        if (polygon[i][0] != -1 && polygon[i][1] != -1) {
-            j = i;
-            break;
-        }
-    }
-
-    // Calculate the sum for the Gaussian formula
-    for (int i = j + 1; i < n; ++i) {
-        if (polygon[i][0] == -1 && polygon[i][1] == -1) continue; // Skip invalid vertices
-        area += (polygon[j][0] * polygon[i][1] - polygon[i][0] * polygon[j][1]);
-        j = i; // Update the index of the previous valid vertex
-    }
-
-    // Close the polygon loop if the last vertex is valid
-    if (polygon[j][0] != -1 && polygon[j][1] != -1 && (polygon[0][0] != -1 && polygon[0][1] != -1)) {
-        area += (polygon[j][0] * polygon[0][1] - polygon[0][0] * polygon[j][1]);
-    }
-
-    return fabs(area) / 2.0;
-}
-
-template <typename scalar_t>
-__device__ scalar_t polygonArea(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> &polygon) {
-    scalar_t area = 0;
-    int n = polygon.size(0);
-    int j = 0; // Index of the previous valid vertex
-
-    // Initialize the previous valid vertex
-    for (int i = 0; i < n; ++i) {
-        if (polygon[i][0] != -1 && polygon[i][1] != -1) {
+        if (isinf(polygon[i][0]) && isinf(polygon[i][1])) {
             j = i;
             break;
         }
@@ -268,13 +258,13 @@ __device__ scalar_t polygonArea(const at::TensorAccessor<scalar_t, 2, at::Restri
 
     // Calculate the sum for the Shoelace formula
     for (int i = j + 1; i < n; ++i) {
-        if (polygon[i][0] == -1 && polygon[i][1] == -1) continue; // Skip invalid vertices
+        if (isinf(polygon[i][0]) && isinf(polygon[i][1])) continue; // Skip invalid vertices
         area += (polygon[j][0] * polygon[i][1] - polygon[i][0] * polygon[j][1]);
         j = i; // Update the index of the previous valid vertex
     }
 
     // Close the polygon loop if the last vertex is valid
-    if (polygon[j][0] != -1 && polygon[j][1] != -1 && (polygon[0][0] != -1 && polygon[0][1] != -1)) {
+    if (isinf(polygon[j][0]) && isinf(polygon[j][1]) && (isinf(polygon[0][0]) && isinf(polygon[0][1]))) {
         area += (polygon[j][0] * polygon[0][1] - polygon[0][0] * polygon[j][1]);
     }
 
@@ -282,23 +272,23 @@ __device__ scalar_t polygonArea(const at::TensorAccessor<scalar_t, 2, at::Restri
 }
 
 template <typename scalar_t>
-__device__ void copyIntersectionInsidePoints(at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> intersectionPoints,
-                                             at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> insidePoints,
-                                             at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> allPoints){
+__device__ inline void copyIntersectionInsidePoints(at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> intersectionPoints,
+                                                    at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> insidePoints,
+                                                    at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> allPoints){
     int nextInsidePointIndex = 0;
 
     for (int i = 0; i < intersectionPoints.size(0); i++){
-        if (intersectionPoints[i][0] != -1 && intersectionPoints[i][1] != -1){
+        if (isinf(intersectionPoints[i][0]) && isinf(intersectionPoints[i][1])){
             allPoints[i][0] = intersectionPoints[i][0];
             allPoints[i][1] = intersectionPoints[i][1];
         }
     }
 
     for (int i = 0; i < allPoints.size(0); i++){
-        if (allPoints[i][0] == -1 && allPoints[i][1] == -1){ // if points haven't been changed
+        if (isinf(allPoints[i][0]) && isinf(allPoints[i][1])){ // if points haven't been changed
             // Find the next unused inside point
             while (nextInsidePointIndex < insidePoints.size(0) && 
-                   (insidePoints[nextInsidePointIndex][0] == -1 || insidePoints[nextInsidePointIndex][1] == -1)) {
+                   (isinf(insidePoints[nextInsidePointIndex][0]) || isinf(insidePoints[nextInsidePointIndex][1]))) {
                 nextInsidePointIndex++;
             }
             // If there's an unused inside point, use it to fill allPoints
@@ -315,13 +305,13 @@ __device__ void copyIntersectionInsidePoints(at::TensorAccessor<scalar_t, 2, at:
 }
 
 template <typename scalar_t>
-__device__ scalar_t computeAngle(const Point<scalar_t>& centroid, const Point<scalar_t>& p) {
+__device__ inline scalar_t computeAngle(const Point<scalar_t>& centroid, const Point<scalar_t>& p) {
     // Use atan2f for float and atan2 for double
     return (sizeof(scalar_t) == sizeof(double)) ? atan2(p.y - centroid.y, p.x - centroid.x) : atan2f(p.y - centroid.y, p.x - centroid.x);
 }
 
 template <typename scalar_t>
-__device__ bool comparePoints(const Point<scalar_t>& p1, const Point<scalar_t>& p2, const Point<scalar_t>& centroid) {
+__device__ inline bool comparePoints(const Point<scalar_t>& p1, const Point<scalar_t>& p2, const Point<scalar_t>& centroid) {
     const scalar_t EPSILON = 1e-6;
 
     scalar_t angle1 = computeAngle(centroid, p1);
@@ -338,7 +328,7 @@ __device__ bool comparePoints(const Point<scalar_t>& p1, const Point<scalar_t>& 
 }
 
 template<typename scalar_t>
-__device__ void swapPoints(at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> points, int i){
+__device__ inline void swapPoints(at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> points, int i){
     scalar_t tempX = points[i][0];
     scalar_t tempY = points[i][1];
     points[i][0] = points[i + 1][0];
@@ -349,7 +339,8 @@ __device__ void swapPoints(at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits
 
 // Sorts a vector of points in clockwise order(can be upgraded to a better sorting algorithm)
 template <typename scalar_t>
-__device__ void sortPointsClockwise(at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> points) {
+__device__ inline void sortPointsClockwise(at::TensorAccessor<scalar_t, 2, 
+                                           at::RestrictPtrTraits, int> points) {
     // Calculate the centroid of the points
     Point<scalar_t> centroid = findCentroid(points);
     
@@ -359,8 +350,8 @@ __device__ void sortPointsClockwise(at::TensorAccessor<scalar_t, 2, at::Restrict
         swapped = false; // Set swapped to false at the beginning of the loop
         for (int i = 0; i < n - 1; i++) {
             // Skip points where both x and y are -1
-            if (points[i][0] == -1 && points[i][1] == -1) continue;
-            if (points[i + 1][0] == -1 && points[i + 1][1] == -1) continue;
+            if (isinf(points[i][0]) && isinf(points[i][1])) continue;
+            if (isinf(points[i + 1][0]) && isinf(points[i + 1][1])) continue;
             Point<scalar_t> p1 = {points[i][0], points[i][1]};
             Point<scalar_t> p2 = {points[i + 1][0], points[i + 1][1]};
 
@@ -377,46 +368,59 @@ __device__ void sortPointsClockwise(at::TensorAccessor<scalar_t, 2, at::Restrict
 }
 
 template <typename scalar_t>
-__device__ scalar_t intersectionAreaCuda(at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0,
-                                         at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1,
-                                         at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> intersectionPoints,
-                                         at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> insidePoints,
-                                         at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> allPoints,
-                                         const int MAX_INTERSECTIONS
-                                         ){
-    int numIntersectionPoints = 0;
-    int numInsidePoints = 0;
-    
+__device__ inline bool checkSimpleIntersection(at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0,
+                                               at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1){
+    // Function to check a very simple intersection. If one quad's x's and y's are not overlapping with another's x and y's 
+    // we know that intersection area will be 0 and we avoid other calculations in kernel
+    // quad_0
+    scalar_t* min_max_x_0 = findMinMaxQuadCoordinate(quad_0, Coordinate::X);
+    scalar_t* min_max_y_0 = findMinMaxQuadCoordinate(quad_0, Coordinate::Y);
+    // quad_1
+    scalar_t* min_max_x_1 = findMinMaxQuadCoordinate(quad_1, Coordinate::X);
+    scalar_t* min_max_y_1 = findMinMaxQuadCoordinate(quad_1, Coordinate::Y);
+    // Check for overlap in the x and y dimensions
+    bool overlap_x = (min_max_x_0[0] <= min_max_x_1[1]) && (min_max_x_0[1] >= min_max_x_1[0]);
+    bool overlap_y = (min_max_y_0[0] <= min_max_y_1[1]) && (min_max_y_0[1] >= min_max_y_1[0]);
+    return overlap_x && overlap_y;
+}
+
+template <typename scalar_t>
+__device__ inline scalar_t intersectionAreaCuda(at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0,
+                                                at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1,
+                                                at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> intersectionPoints,
+                                                at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> insidePoints,
+                                                at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> allPoints,
+                                                const int MAX_INTERSECTIONS
+                                            ){
     sortPointsClockwise(quad_0);
     sortPointsClockwise(quad_1);
-    numIntersectionPoints = findIntersectionPoints(quad_0, quad_1, intersectionPoints, MAX_INTERSECTIONS);
-    numInsidePoints = findPointsInside(quad_0, quad_1, insidePoints, MAX_INTERSECTIONS);
-    copyIntersectionInsidePoints(intersectionPoints, insidePoints, allPoints);
 
+    // If we know that quad_0 and quad_1 are not intersecting even a tiny bit(minimum enclosing box check) 
+    // we can skip below calculation altogether
+    if (!checkSimpleIntersection(quad_0, quad_1)) return 0.0;
+
+    findIntersectionPoints(quad_0, quad_1, intersectionPoints, MAX_INTERSECTIONS);
+    findPointsInside(quad_0, quad_1, insidePoints, MAX_INTERSECTIONS);
+    copyIntersectionInsidePoints(intersectionPoints, insidePoints, allPoints);
     sortPointsClockwise(allPoints);
-    scalar_t intersectArea;
-    if (allPoints.size(0) <= 0){
-        intersectArea = 0.0;
-    } else {
-        intersectArea = polygonArea(allPoints);
-    }
+    scalar_t intersectArea = polygonArea(allPoints);
     return intersectArea;
 }
 
 template <typename scalar_t>
-__device__ scalar_t unionAreaCuda(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0,\
-                                  const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1, 
-                                  scalar_t intersectArea){
+__device__ inline scalar_t unionAreaCuda(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0,\
+                                         const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1, 
+                                         scalar_t intersectArea){
     return polygonArea(quad_0) + polygonArea(quad_1) - intersectArea;
 }
 
 template <typename scalar_t>
-__device__ scalar_t calculateIoUCuda(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0,
-                                     const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1,
-                                     at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> intersectionPoints,
-                                     at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> insidePoints,
-                                     at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> allPoints,
-                                     const int MAX_INTERSECTIONS){
+__device__ inline scalar_t calculateIoUCuda(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0,
+                                            const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1,
+                                            at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> intersectionPoints,
+                                            at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> insidePoints,
+                                            at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> allPoints,
+                                            const int MAX_INTERSECTIONS){
     const scalar_t epsilon = 0.00001;
     scalar_t intersect_area = intersectionAreaCuda(quad_0, quad_1, intersectionPoints, insidePoints, allPoints, MAX_INTERSECTIONS);
     return intersect_area / (epsilon + unionAreaCuda(quad_0, quad_1, intersect_area));
@@ -449,14 +453,14 @@ __global__ void calculateIoUCudaKernel(
 
 
 torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) {
-    TORCH_CHECK(quad_0.numel() > 0 && quad_1.numel() > 0, "Input tensors must be of the same size and not empty");
+    TORCH_CHECK(quad_0.numel() > 0 && quad_1.numel() > 0, "Input tensors must not empty");
     
     const int MAX_INTERSECTIONS = 8; // 8 intersections max
     // Create an output tensor and tensors for calculating intersection area
     torch::Tensor iou_matrix = torch::zeros({quad_0.size(0), quad_1.size(0)}, quad_0.options());
-    torch::Tensor intersectionPoints = torch::ones({quad_0.size(0), quad_1.size(0), MAX_INTERSECTIONS, 2}, quad_0.options()) * -1;
-    torch::Tensor insidePoints = torch::ones({quad_0.size(0), quad_1.size(0), MAX_INTERSECTIONS, 2}, quad_0.options()) * -1;
-    torch::Tensor allPoints = torch::ones({quad_0.size(0), quad_1.size(0), MAX_INTERSECTIONS * 2, 2}, quad_0.options()) * -1;
+    torch::Tensor intersectionPoints = torch::full({quad_0.size(0), quad_1.size(0), MAX_INTERSECTIONS, 2}, std::numeric_limits<float>::infinity(), quad_0.options());
+    torch::Tensor insidePoints = torch::full({quad_0.size(0), quad_1.size(0), MAX_INTERSECTIONS, 2}, std::numeric_limits<float>::infinity(), quad_0.options());
+    torch::Tensor allPoints = torch::full({quad_0.size(0), quad_1.size(0), MAX_INTERSECTIONS * 2, 2}, std::numeric_limits<float>::infinity(), quad_0.options());
 
     // Calculate the number of blocks and threads
     dim3 blockSize(16, 16);

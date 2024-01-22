@@ -1,8 +1,6 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import torch
 import quad_iou
-import time
 from shapely import Polygon
 
 def generate_convex_quadrilateral():

@@ -46,7 +46,7 @@ def main():
     quads_2_torch = torch.tensor(quads_2).cuda()
     iou = quad_iou.calculateIoU(quads_1_torch, quads_2_torch)
     t2 = time.time()
-    print("TIME TAKEN FOR CALCULATING IOU MATRIX WITH TORCH ", t2 - t1)
+    time_quad_iou = t2 - t1
     iou_matrix = np.zeros((len(quads_1), len(quads_2)))
     t1 = time.time()
     quads_1_poly = [Polygon(i) for i in quads_1]
@@ -56,7 +56,15 @@ def main():
             iou = calc_iou_poly(quad_1_poly, quad_2_poly)
             iou_matrix[i][j] = iou
     t2 = time.time()
-    print("TIME TAKEN FOR CALCULATING IOU MATRIX WITH SHAPELY ", t2 - t1)
+    time_shapely = t2 - t1
+    return time_quad_iou, time_shapely
     
 if __name__ == "__main__":
-    main()
+    times_0 = []
+    times_1 = []
+    for i in range(10):
+        time_quad_iou, time_shapely = main()
+        times_0.append(time_quad_iou)
+        times_1.append(time_shapely)
+    print(f"CUDA IOU TOOK ON AVERAGE {sum(times_0) / len(times_0)} seconds")
+    print(f"SHAPELY IOU TOOK ON AVERAGE {sum(times_1) / len(times_1)} seconds")
