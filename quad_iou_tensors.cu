@@ -94,6 +94,18 @@ __device__ scalar_t findMaxQuadCoordinate(const at::TensorAccessor<scalar_t, 2, 
 }
 
 template <typename scalar_t>
+__device__ scalar_t findMinQuadCoordinate(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> box, Coordinate coord){
+    // Find the minimum x-coordinate or y-coordinate of the quadrilateral based on the coord value
+    scalar_t min_value = box[0][static_cast<int>(coord)];
+    for (int i = 1; i < 4; ++i) {
+        if (box[i][static_cast<int>(coord)] < min_value) {
+            min_value = box[i][static_cast<int>(coord)];
+        }
+    }
+    return min_value;
+}
+
+template <typename scalar_t>
 __device__ int isPointInsideQuadrilateral(const Point<scalar_t>& point_to_check, const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> box) {
     scalar_t max_x = findMaxQuadCoordinate(box, Coordinate::X);
     scalar_t max_y = findMaxQuadCoordinate(box, Coordinate::Y);
@@ -377,6 +389,28 @@ __device__ void sortPointsClockwise(at::TensorAccessor<scalar_t, 2, at::Restrict
 }
 
 template <typename scalar_t>
+__device__ bool checkSimpleIntersection(at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0,
+                                        at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1){
+    // Function to check a very simple intersection. If one quad's x's and y's are not overlapping with another's x and y's 
+    // we know that intersection area will be 0 and we avoid other calculations in kernel
+    // quad_0
+    scalar_t max_x_0 = findMaxQuadCoordinate(quad_0, Coordinate::X);
+    scalar_t max_y_0 = findMaxQuadCoordinate(quad_0, Coordinate::Y);
+    scalar_t min_x_0 = findMinQuadCoordinate(quad_0, Coordinate::X);
+    scalar_t min_y_0 = findMinQuadCoordinate(quad_0, Coordinate::Y);
+    // quad_1
+    scalar_t max_x_1 = findMaxQuadCoordinate(quad_1, Coordinate::X);
+    scalar_t max_y_1 = findMaxQuadCoordinate(quad_1, Coordinate::Y);
+    scalar_t min_x_1 = findMinQuadCoordinate(quad_1, Coordinate::X);
+    scalar_t min_y_1 = findMinQuadCoordinate(quad_1, Coordinate::Y);
+
+    // Check for overlap in the x and y dimensions
+    bool overlap_x = (min_x_0 <= max_x_1) && (max_x_0 >= min_x_1);
+    bool overlap_y = (min_y_0 <= max_y_1) && (max_y_0 >= min_y_1);
+    return overlap_x && overlap_y;
+}
+
+template <typename scalar_t>
 __device__ scalar_t intersectionAreaCuda(at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0,
                                          at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1,
                                          at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> intersectionPoints,
@@ -389,17 +423,16 @@ __device__ scalar_t intersectionAreaCuda(at::TensorAccessor<scalar_t, 2, at::Res
     
     sortPointsClockwise(quad_0);
     sortPointsClockwise(quad_1);
+
+    // If we know that quad_0 and quad_1 are not intersecting even a tiny bit(minimum enclosing box check) 
+    // we can skip below calculation altogether
+    if (!checkSimpleIntersection(quad_0, quad_1)) return 0.0;
+
     numIntersectionPoints = findIntersectionPoints(quad_0, quad_1, intersectionPoints, MAX_INTERSECTIONS);
     numInsidePoints = findPointsInside(quad_0, quad_1, insidePoints, MAX_INTERSECTIONS);
     copyIntersectionInsidePoints(intersectionPoints, insidePoints, allPoints);
-
     sortPointsClockwise(allPoints);
-    scalar_t intersectArea;
-    if (allPoints.size(0) <= 0){
-        intersectArea = 0.0;
-    } else {
-        intersectArea = polygonArea(allPoints);
-    }
+    scalar_t intersectArea = polygonArea(allPoints);
     return intersectArea;
 }
 
@@ -449,7 +482,7 @@ __global__ void calculateIoUCudaKernel(
 
 
 torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) {
-    TORCH_CHECK(quad_0.numel() > 0 && quad_1.numel() > 0, "Input tensors must be of the same size and not empty");
+    TORCH_CHECK(quad_0.numel() > 0 && quad_1.numel() > 0, "Input tensors must not empty");
     
     const int MAX_INTERSECTIONS = 8; // 8 intersections max
     // Create an output tensor and tensors for calculating intersection area
