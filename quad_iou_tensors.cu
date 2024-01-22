@@ -13,12 +13,11 @@ enum class Coordinate {
 };
 
 template <typename scalar_t>
-__device__ int findPointsInside(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0, 
+__device__ void findPointsInside(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0, 
                                 const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1, 
                                 at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> inside_points, 
                                 int maxPoints) {
     int numInsidePoints = 0;
-
     for (int i = 0; i < 4; i++) {
         Point<scalar_t> quad_0_point = {quad_0[i][0], quad_0[i][1]};
         if (isPointInsideQuadrilateral(quad_0_point, quad_1) == 1) {
@@ -37,11 +36,10 @@ __device__ int findPointsInside(const at::TensorAccessor<scalar_t, 2, at::Restri
             }
         }
     }
-    return numInsidePoints;
 }
 
 template <typename scalar_t>
-__device__ int findIntersectionPoints(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0, 
+__device__ void findIntersectionPoints(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0, 
                                       const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1, 
                                       at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> intersections, 
                                       int maxIntersections) {
@@ -71,7 +69,6 @@ __device__ int findIntersectionPoints(const at::TensorAccessor<scalar_t, 2, at::
             }
         }
     }
-    return numIntersections;
 }
 
 template <typename scalar_t>
@@ -236,36 +233,7 @@ __device__ Point<scalar_t> findCentroid(torch::PackedTensorAccessor32<scalar_t,2
 }
 
 template <typename scalar_t>
-__device__ scalar_t polygonArea(const torch::PackedTensorAccessor32<scalar_t, 2, torch::RestrictPtrTraits> &polygon) {
-    scalar_t area = 0;
-    int n = polygon.size(0);
-    int j = 0; // Index of the previous valid vertex
-
-    // Initialize the previous valid vertex
-    for (int i = 0; i < n; ++i) {
-        if (polygon[i][0] != -1 && polygon[i][1] != -1) {
-            j = i;
-            break;
-        }
-    }
-
-    // Calculate the sum for the Gaussian formula
-    for (int i = j + 1; i < n; ++i) {
-        if (polygon[i][0] == -1 && polygon[i][1] == -1) continue; // Skip invalid vertices
-        area += (polygon[j][0] * polygon[i][1] - polygon[i][0] * polygon[j][1]);
-        j = i; // Update the index of the previous valid vertex
-    }
-
-    // Close the polygon loop if the last vertex is valid
-    if (polygon[j][0] != -1 && polygon[j][1] != -1 && (polygon[0][0] != -1 && polygon[0][1] != -1)) {
-        area += (polygon[j][0] * polygon[0][1] - polygon[0][0] * polygon[j][1]);
-    }
-
-    return fabs(area) / 2.0;
-}
-
-template <typename scalar_t>
-__device__ scalar_t polygonArea(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> &polygon) {
+__device__ scalar_t polygonArea(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> polygon) {
     scalar_t area = 0;
     int n = polygon.size(0);
     int j = 0; // Index of the previous valid vertex
@@ -418,9 +386,6 @@ __device__ scalar_t intersectionAreaCuda(at::TensorAccessor<scalar_t, 2, at::Res
                                          at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> allPoints,
                                          const int MAX_INTERSECTIONS
                                          ){
-    int numIntersectionPoints = 0;
-    int numInsidePoints = 0;
-    
     sortPointsClockwise(quad_0);
     sortPointsClockwise(quad_1);
 
@@ -428,8 +393,8 @@ __device__ scalar_t intersectionAreaCuda(at::TensorAccessor<scalar_t, 2, at::Res
     // we can skip below calculation altogether
     if (!checkSimpleIntersection(quad_0, quad_1)) return 0.0;
 
-    numIntersectionPoints = findIntersectionPoints(quad_0, quad_1, intersectionPoints, MAX_INTERSECTIONS);
-    numInsidePoints = findPointsInside(quad_0, quad_1, insidePoints, MAX_INTERSECTIONS);
+    findIntersectionPoints(quad_0, quad_1, intersectionPoints, MAX_INTERSECTIONS);
+    findPointsInside(quad_0, quad_1, insidePoints, MAX_INTERSECTIONS);
     copyIntersectionInsidePoints(intersectionPoints, insidePoints, allPoints);
     sortPointsClockwise(allPoints);
     scalar_t intersectArea = polygonArea(allPoints);
