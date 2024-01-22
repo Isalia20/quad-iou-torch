@@ -34,4 +34,4 @@ iou = quad_iou.calculateIoU(a, b)
 
 ## Comparison with Shapely library
 
-One of the ways to calculate iou for quadrilaterals is to use `Shapely` library. You can see the time comparison between the library and this implementation for 300x200 quadrilaterals by running `python tryout_scripts/comparison.py`
+One of the ways to calculate iou for quadrilaterals is to use `Shapely` library. You can see the time comparison between the library and this implementation for 2000x200 quadrilaterals by running `python tryout_scripts/comparison.py`
