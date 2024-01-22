@@ -91,15 +91,25 @@ __device__ inline scalar_t findMaxQuadCoordinate(const at::TensorAccessor<scalar
 }
 
 template <typename scalar_t>
-__device__ inline scalar_t findMinQuadCoordinate(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> box, Coordinate coord){
-    // Find the minimum x-coordinate or y-coordinate of the quadrilateral based on the coord value
-    scalar_t min_value = box[0][static_cast<int>(coord)];
+__device__ inline scalar_t* findMinMaxQuadCoordinate(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> box, Coordinate coord){
+    // Find the maximum x-coordinate or y-coordinate of the quadrilateral based on the coord value
+    // First value will be minimum and second will be maximum, hence min_max
+    static __device__ scalar_t min_max_values[2];
+
+    min_max_values[0] = box[0][static_cast<int>(coord)];
+    min_max_values[1] = box[0][static_cast<int>(coord)];
+
     for (int i = 1; i < 4; ++i) {
-        if (box[i][static_cast<int>(coord)] < min_value) {
-            min_value = box[i][static_cast<int>(coord)];
+        // Min value
+        if (box[i][static_cast<int>(coord)] < min_max_values[0]) {
+            min_max_values[0] = box[i][static_cast<int>(coord)];
+        }
+        // Max value
+        if (box[i][static_cast<int>(coord)] > min_max_values[1]) {
+            min_max_values[1] = box[i][static_cast<int>(coord)];
         }
     }
-    return min_value;
+    return min_max_values;
 }
 
 template <typename scalar_t>
@@ -205,7 +215,7 @@ __device__ inline Point<scalar_t> findCentroid(const at::TensorAccessor<scalar_t
     Point<scalar_t> centroid = {0.0, 0.0};
     int valid_point_counter = 0;
     for (int i = 0; i < points.size(0); i++) {
-        if (points[i][0] != -1.0 && points[i][1] != -1.0){
+        if (isinf(points[i][0]) && isinf(points[i][1])){
             centroid.x += points[i][0];
             centroid.y += points[i][1];
             valid_point_counter++;
@@ -221,7 +231,7 @@ __device__ inline Point<scalar_t> findCentroid(torch::PackedTensorAccessor32<sca
     Point<scalar_t> centroid = {0.0, 0.0};
     int valid_point_counter = 0;
     for (int i = 0; i < points.size(0); i++) {
-        if (points[i][0] != -1.0 && points[i][1] != -1.0){
+        if (isinf(points[i][0]) && isinf(points[i][1])){
             centroid.x += points[i][0];
             centroid.y += points[i][1];
             valid_point_counter++;
@@ -240,7 +250,7 @@ __device__ inline scalar_t polygonArea(const at::TensorAccessor<scalar_t, 2, at:
 
     // Initialize the previous valid vertex
     for (int i = 0; i < n; ++i) {
-        if (polygon[i][0] != -1 && polygon[i][1] != -1) {
+        if (isinf(polygon[i][0]) && isinf(polygon[i][1])) {
             j = i;
             break;
         }
@@ -248,13 +258,13 @@ __device__ inline scalar_t polygonArea(const at::TensorAccessor<scalar_t, 2, at:
 
     // Calculate the sum for the Shoelace formula
     for (int i = j + 1; i < n; ++i) {
-        if (polygon[i][0] == -1 && polygon[i][1] == -1) continue; // Skip invalid vertices
+        if (isinf(polygon[i][0]) && isinf(polygon[i][1])) continue; // Skip invalid vertices
         area += (polygon[j][0] * polygon[i][1] - polygon[i][0] * polygon[j][1]);
         j = i; // Update the index of the previous valid vertex
     }
 
     // Close the polygon loop if the last vertex is valid
-    if (polygon[j][0] != -1 && polygon[j][1] != -1 && (polygon[0][0] != -1 && polygon[0][1] != -1)) {
+    if (isinf(polygon[j][0]) && isinf(polygon[j][1]) && (isinf(polygon[0][0]) && isinf(polygon[0][1]))) {
         area += (polygon[j][0] * polygon[0][1] - polygon[0][0] * polygon[j][1]);
     }
 
@@ -268,17 +278,17 @@ __device__ inline void copyIntersectionInsidePoints(at::TensorAccessor<scalar_t,
     int nextInsidePointIndex = 0;
 
     for (int i = 0; i < intersectionPoints.size(0); i++){
-        if (intersectionPoints[i][0] != -1 && intersectionPoints[i][1] != -1){
+        if (isinf(intersectionPoints[i][0]) && isinf(intersectionPoints[i][1])){
             allPoints[i][0] = intersectionPoints[i][0];
             allPoints[i][1] = intersectionPoints[i][1];
         }
     }
 
     for (int i = 0; i < allPoints.size(0); i++){
-        if (allPoints[i][0] == -1 && allPoints[i][1] == -1){ // if points haven't been changed
+        if (isinf(allPoints[i][0]) && isinf(allPoints[i][1])){ // if points haven't been changed
             // Find the next unused inside point
             while (nextInsidePointIndex < insidePoints.size(0) && 
-                   (insidePoints[nextInsidePointIndex][0] == -1 || insidePoints[nextInsidePointIndex][1] == -1)) {
+                   (isinf(insidePoints[nextInsidePointIndex][0]) || isinf(insidePoints[nextInsidePointIndex][1]))) {
                 nextInsidePointIndex++;
             }
             // If there's an unused inside point, use it to fill allPoints
@@ -340,8 +350,8 @@ __device__ inline void sortPointsClockwise(at::TensorAccessor<scalar_t, 2,
         swapped = false; // Set swapped to false at the beginning of the loop
         for (int i = 0; i < n - 1; i++) {
             // Skip points where both x and y are -1
-            if (points[i][0] == -1 && points[i][1] == -1) continue;
-            if (points[i + 1][0] == -1 && points[i + 1][1] == -1) continue;
+            if (isinf(points[i][0]) && isinf(points[i][1])) continue;
+            if (isinf(points[i + 1][0]) && isinf(points[i + 1][1])) continue;
             Point<scalar_t> p1 = {points[i][0], points[i][1]};
             Point<scalar_t> p2 = {points[i + 1][0], points[i + 1][1]};
 
@@ -363,19 +373,14 @@ __device__ inline bool checkSimpleIntersection(at::TensorAccessor<scalar_t, 2, a
     // Function to check a very simple intersection. If one quad's x's and y's are not overlapping with another's x and y's 
     // we know that intersection area will be 0 and we avoid other calculations in kernel
     // quad_0
-    scalar_t max_x_0 = findMaxQuadCoordinate(quad_0, Coordinate::X);
-    scalar_t max_y_0 = findMaxQuadCoordinate(quad_0, Coordinate::Y);
-    scalar_t min_x_0 = findMinQuadCoordinate(quad_0, Coordinate::X);
-    scalar_t min_y_0 = findMinQuadCoordinate(quad_0, Coordinate::Y);
+    scalar_t* min_max_x_0 = findMinMaxQuadCoordinate(quad_0, Coordinate::X);
+    scalar_t* min_max_y_0 = findMinMaxQuadCoordinate(quad_0, Coordinate::Y);
     // quad_1
-    scalar_t max_x_1 = findMaxQuadCoordinate(quad_1, Coordinate::X);
-    scalar_t max_y_1 = findMaxQuadCoordinate(quad_1, Coordinate::Y);
-    scalar_t min_x_1 = findMinQuadCoordinate(quad_1, Coordinate::X);
-    scalar_t min_y_1 = findMinQuadCoordinate(quad_1, Coordinate::Y);
-
+    scalar_t* min_max_x_1 = findMinMaxQuadCoordinate(quad_1, Coordinate::X);
+    scalar_t* min_max_y_1 = findMinMaxQuadCoordinate(quad_1, Coordinate::Y);
     // Check for overlap in the x and y dimensions
-    bool overlap_x = (min_x_0 <= max_x_1) && (max_x_0 >= min_x_1);
-    bool overlap_y = (min_y_0 <= max_y_1) && (max_y_0 >= min_y_1);
+    bool overlap_x = (min_max_x_0[0] <= min_max_x_1[1]) && (min_max_x_0[1] >= min_max_x_1[0]);
+    bool overlap_y = (min_max_y_0[0] <= min_max_y_1[1]) && (min_max_y_0[1] >= min_max_y_1[0]);
     return overlap_x && overlap_y;
 }
 
@@ -453,9 +458,9 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) 
     const int MAX_INTERSECTIONS = 8; // 8 intersections max
     // Create an output tensor and tensors for calculating intersection area
     torch::Tensor iou_matrix = torch::zeros({quad_0.size(0), quad_1.size(0)}, quad_0.options());
-    torch::Tensor intersectionPoints = torch::ones({quad_0.size(0), quad_1.size(0), MAX_INTERSECTIONS, 2}, quad_0.options()) * -1;
-    torch::Tensor insidePoints = torch::ones({quad_0.size(0), quad_1.size(0), MAX_INTERSECTIONS, 2}, quad_0.options()) * -1;
-    torch::Tensor allPoints = torch::ones({quad_0.size(0), quad_1.size(0), MAX_INTERSECTIONS * 2, 2}, quad_0.options()) * -1;
+    torch::Tensor intersectionPoints = torch::full({quad_0.size(0), quad_1.size(0), MAX_INTERSECTIONS, 2}, std::numeric_limits<float>::infinity(), quad_0.options());
+    torch::Tensor insidePoints = torch::full({quad_0.size(0), quad_1.size(0), MAX_INTERSECTIONS, 2}, std::numeric_limits<float>::infinity(), quad_0.options());
+    torch::Tensor allPoints = torch::full({quad_0.size(0), quad_1.size(0), MAX_INTERSECTIONS * 2, 2}, std::numeric_limits<float>::infinity(), quad_0.options());
 
     // Calculate the number of blocks and threads
     dim3 blockSize(16, 16);
