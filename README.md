@@ -9,8 +9,10 @@ Cuda kernel for calculating IoU for quadrilaterals. It can calculate IoU either 
 
 1. Clone the repo.
 2. Go into the folder.
-3. Run `python setup.py install`
-4. Run `python tryout_scripts/usage.py` to test it out. Expected output is `0.25`
+3. Install latest torch with the cuda version you have. Check with `nvcc --version`, upgrade if necessary.
+4. Run `python setup.py install`
+5. Run `python tryout_scripts/usage.py` to test it out. Expected output is `0.25`
+6. To run `comparison.py` you should install shapely as well with `pip install shapely`
 
 ## Example usage:
 ```
