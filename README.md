@@ -13,6 +13,8 @@ Cuda kernel for calculating IoU for quadrilaterals. It can calculate IoU either 
 | Debian 11 | L4 | 10.2.1 | 12.1 | Stable 2.1.2 CUDA 12.2 |
 | Windows 10 | RTX 4060 Ti | Microsoft Visual C++(Part of Visual Studio) | 12.1 | Stable 2.1.2 CUDA 12.1 |
 
+
+
 1. Clone the repo.
 2. Go into the folder.
 3. Install latest torch with the cuda version you have. Check with `nvcc --version`, upgrade if necessary.
