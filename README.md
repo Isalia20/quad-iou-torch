@@ -5,7 +5,13 @@ Cuda kernel for calculating IoU for quadrilaterals. It can calculate IoU either 
 
 ## Installation
 
-**NOTE:** Installation and usage of this module requires NVIDIA GPU, gcc, nvcc and torch installed. Tested with gcc version 11.4.0, nvcc version 12.1, card RTX 4060 Ti
+**NOTE:** Installation and usage of this module requires NVIDIA GPU, gcc, nvcc and torch installed. Tested with following setups:
+
+|OS| GPU Card | gcc version| nvcc version | torch_version |
+|--|--|--|--|--|
+| Ubuntu 22.04 | RTX 4060 Ti | 11.4 | 12.1 | Stable 2.1.2 CUDA 12.1 |
+| Debian 11 | L4 | 10.2.1 | 12.1 | Stable 2.1.2 CUDA 12.2 |
+| Windows 10 | RTX 4060 Ti | Microsoft Visual C++(Part of Visual Studio) | 12.1 | Stable 2.1.2 CUDA 12.1 |
 
 1. Clone the repo.
 2. Go into the folder.
