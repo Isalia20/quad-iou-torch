@@ -215,7 +215,7 @@ __device__ inline Point<scalar_t> findCentroid(const at::TensorAccessor<scalar_t
     Point<scalar_t> centroid = {0.0, 0.0};
     int valid_point_counter = 0;
     for (int i = 0; i < points.size(0); i++) {
-        if (isinf(points[i][0]) && isinf(points[i][1])){
+        if (!isinf(points[i][0]) && !isinf(points[i][1])){
             centroid.x += points[i][0];
             centroid.y += points[i][1];
             valid_point_counter++;
@@ -231,7 +231,7 @@ __device__ inline Point<scalar_t> findCentroid(torch::PackedTensorAccessor32<sca
     Point<scalar_t> centroid = {0.0, 0.0};
     int valid_point_counter = 0;
     for (int i = 0; i < points.size(0); i++) {
-        if (isinf(points[i][0]) && isinf(points[i][1])){
+        if (!isinf(points[i][0]) && !isinf(points[i][1])){
             centroid.x += points[i][0];
             centroid.y += points[i][1];
             valid_point_counter++;
@@ -250,7 +250,7 @@ __device__ inline scalar_t polygonArea(const at::TensorAccessor<scalar_t, 2, at:
 
     // Initialize the previous valid vertex
     for (int i = 0; i < n; ++i) {
-        if (isinf(polygon[i][0]) && isinf(polygon[i][1])) {
+        if (!isinf(polygon[i][0]) && !isinf(polygon[i][1])) {
             j = i;
             break;
         }
@@ -264,7 +264,7 @@ __device__ inline scalar_t polygonArea(const at::TensorAccessor<scalar_t, 2, at:
     }
 
     // Close the polygon loop if the last vertex is valid
-    if (isinf(polygon[j][0]) && isinf(polygon[j][1]) && (isinf(polygon[0][0]) && isinf(polygon[0][1]))) {
+    if (!isinf(polygon[j][0]) && !isinf(polygon[j][1]) && (!isinf(polygon[0][0]) && !isinf(polygon[0][1]))) {
         area += (polygon[j][0] * polygon[0][1] - polygon[0][0] * polygon[j][1]);
     }
 
@@ -278,7 +278,7 @@ __device__ inline void copyIntersectionInsidePoints(at::TensorAccessor<scalar_t,
     int nextInsidePointIndex = 0;
 
     for (int i = 0; i < intersectionPoints.size(0); i++){
-        if (isinf(intersectionPoints[i][0]) && isinf(intersectionPoints[i][1])){
+        if (!isinf(intersectionPoints[i][0]) && !isinf(intersectionPoints[i][1])){
             allPoints[i][0] = intersectionPoints[i][0];
             allPoints[i][1] = intersectionPoints[i][1];
         }
@@ -349,7 +349,7 @@ __device__ inline void sortPointsClockwise(at::TensorAccessor<scalar_t, 2,
     while (swapped) {
         swapped = false; // Set swapped to false at the beginning of the loop
         for (int i = 0; i < n - 1; i++) {
-            // Skip points where both x and y are -1
+            // Skip points where both x and y are inf
             if (isinf(points[i][0]) && isinf(points[i][1])) continue;
             if (isinf(points[i + 1][0]) && isinf(points[i + 1][1])) continue;
             Point<scalar_t> p1 = {points[i][0], points[i][1]};
