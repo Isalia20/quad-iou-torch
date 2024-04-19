@@ -1,3 +1,4 @@
+#include <stdexcept>
 #include <torch/extension.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -405,10 +406,14 @@ __device__ inline scalar_t intersectionAreaCuda(at::TensorAccessor<scalar_t, 2, 
 }
 
 template <typename scalar_t>
-__device__ inline scalar_t unionAreaCuda(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0,\
+__device__ inline scalar_t unionAreaCuda(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0,
                                          const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1, 
+                                         int quad_0_idx,
+                                         int quad_1_idx,
+                                         int quad_0_size,
+                                         scalar_t* polygonAreas,
                                          scalar_t intersectArea){
-    return polygonArea(quad_0) + polygonArea(quad_1) - intersectArea;
+    return polygonAreas[quad_0_idx] + polygonAreas[quad_0_size + quad_1_idx] - intersectArea;
 }
 
 template <typename scalar_t>
@@ -417,10 +422,14 @@ __device__ inline scalar_t calculateIoUCuda(const at::TensorAccessor<scalar_t, 2
                                             at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> intersectionPoints,
                                             at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> insidePoints,
                                             at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> allPoints,
+                                            int quad_0_idx,
+                                            int quad_1_idx,
+                                            int quad_0_size,
+                                            scalar_t* polygonAreas,
                                             const int MAX_INTERSECTIONS){
     const scalar_t epsilon = 0.00001;
     scalar_t intersect_area = intersectionAreaCuda(quad_0, quad_1, intersectionPoints, insidePoints, allPoints, MAX_INTERSECTIONS);
-    return intersect_area / (epsilon + unionAreaCuda(quad_0, quad_1, intersect_area));
+    return intersect_area / (epsilon + unionAreaCuda(quad_0, quad_1, quad_0_idx, quad_1_idx, quad_0_size, polygonAreas, intersect_area));
 }
 
 template <typename scalar_t>
@@ -431,6 +440,7 @@ __global__ void calculateIoUCudaKernel(
     torch::PackedTensorAccessor32<scalar_t,4,torch::RestrictPtrTraits> intersectionPoints,
     torch::PackedTensorAccessor32<scalar_t,4,torch::RestrictPtrTraits> insidePoints,
     torch::PackedTensorAccessor32<scalar_t,4,torch::RestrictPtrTraits> allPoints,
+    scalar_t* polygonAreas,
     const int MAX_INTERSECTIONS
     ) {
 
@@ -443,6 +453,10 @@ __global__ void calculateIoUCudaKernel(
                                                   intersectionPoints[idx1][idx2],
                                                   insidePoints[idx1][idx2],
                                                   allPoints[idx1][idx2],
+                                                  idx1,
+                                                  idx2,
+                                                  quad_0.size(0),
+                                                  polygonAreas,
                                                   MAX_INTERSECTIONS
                                                   );
     }
@@ -458,7 +472,22 @@ __global__ void sortPointsCudaKernel(
     if (idx < quad_0.size(0)){
         sortPointsClockwise(quad_0[idx]);
     } else if (idx < (quad_0.size(0) + quad_1.size(0))){
-        sortPointsClockwise(quad_1[idx]);
+        sortPointsClockwise(quad_1[idx - quad_0.size(0)]);
+    }
+}
+
+template <typename scalar_t>
+__global__ void polygonAreaCalculationKernel(
+    scalar_t* polygonAreas,
+    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> quad_0,
+    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> quad_1
+){
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (idx < quad_0.size(0)){
+        polygonAreas[idx] = polygonArea(quad_0[idx]);
+    } else if (idx < (quad_0.size(0) + quad_1.size(0))){
+        polygonAreas[idx] = polygonArea(quad_1[idx - quad_0.size(0)]);
     }
 }
 
@@ -472,21 +501,26 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) 
     torch::Tensor insidePoints = torch::full({quad_0.size(0), quad_1.size(0), MAX_INTERSECTIONS, 2}, std::numeric_limits<float>::infinity(), quad_0.options());
     torch::Tensor allPoints = torch::full({quad_0.size(0), quad_1.size(0), MAX_INTERSECTIONS * 2, 2}, std::numeric_limits<float>::infinity(), quad_0.options());
 
-    // Calculate the number of blocks and threads
-    dim3 blockSize(16, 16);
-    dim3 gridSize((quad_0.size(0) + blockSize.x - 1) / blockSize.x, (quad_1.size(0) + blockSize.y - 1) / blockSize.y);
+    AT_DISPATCH_FLOATING_TYPES(quad_0.scalar_type(), "calculateIoUCudaTorch", ([&] {
+        scalar_t* polygonAreas_d;
+        cudaMalloc((void**)&polygonAreas_d, (quad_0.size(0) + quad_1.size(0)) * sizeof(scalar_t));
 
-    dim3 blockSizeSort(128, 1, 1);
-    dim3 gridSizeSort((quad_0.size(0) + quad_1.size(0) + blockSize.x - 1) / blockSize.x, 1, 1);
+        dim3 blockSize(16, 16);
+        dim3 gridSize((quad_0.size(0) + blockSize.x - 1) / blockSize.x, (quad_1.size(0) + blockSize.y - 1) / blockSize.y);
+        dim3 blockSizeQuad(128, 1, 1);
+        dim3 gridSizeQuad((quad_0.size(0) + quad_1.size(0) + blockSize.x - 1) / blockSize.x, 1, 1);
 
-    AT_DISPATCH_FLOATING_TYPES(quad_0.scalar_type(), "sortPointsCudaKernel", ([&] {
-        sortPointsCudaKernel<scalar_t><<<gridSizeSort, blockSizeSort>>>(
+        sortPointsCudaKernel<scalar_t><<<gridSizeQuad, blockSizeQuad>>>(
             quad_0.packed_accessor32<scalar_t, 3, torch::RestrictPtrTraits>(),
             quad_1.packed_accessor32<scalar_t, 3, torch::RestrictPtrTraits>()
         );
-    }));
 
-    AT_DISPATCH_FLOATING_TYPES(quad_0.scalar_type(), "calculateIoUCudaTorch", ([&] {
+        polygonAreaCalculationKernel<scalar_t><<<gridSizeQuad, blockSizeQuad>>>(
+            polygonAreas_d,
+            quad_0.packed_accessor32<scalar_t, 3, torch::RestrictPtrTraits>(),
+            quad_1.packed_accessor32<scalar_t, 3, torch::RestrictPtrTraits>()
+        );
+
         calculateIoUCudaKernel<scalar_t><<<gridSize, blockSize>>>(
             quad_0.packed_accessor32<scalar_t, 3, torch::RestrictPtrTraits>(),
             quad_1.packed_accessor32<scalar_t, 3, torch::RestrictPtrTraits>(),
@@ -494,18 +528,19 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) 
             intersectionPoints.packed_accessor32<scalar_t, 4, torch::RestrictPtrTraits>(),
             insidePoints.packed_accessor32<scalar_t, 4, torch::RestrictPtrTraits>(),
             allPoints.packed_accessor32<scalar_t, 4, torch::RestrictPtrTraits>(),
+            polygonAreas_d,
             MAX_INTERSECTIONS
-            );
-        }));
+        );
 
-    // Synchronize to wait for the computation to finish
-    cudaDeviceSynchronize();
-    // Check for any errors launching the kernel
-    auto error = cudaGetLastError();
-    if (error != cudaSuccess) {
-        printf("CUDA error: %s\n", cudaGetErrorString(error));
-        return torch::tensor({}); // Return an empty tensor if there was an error
-    }
-
+        // Check for any errors launching the kernel
+        auto error = cudaGetLastError();
+        if (error != cudaSuccess) {
+            std::string error_message = "CUDA error: ";
+            error_message += cudaGetErrorString(error);
+            throw std::runtime_error(error_message);
+        }
+        
+        cudaFree(polygonAreas_d);
+    }));
     return iou_matrix;
 }
