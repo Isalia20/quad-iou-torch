@@ -392,9 +392,6 @@ __device__ inline scalar_t intersectionAreaCuda(at::TensorAccessor<scalar_t, 2, 
                                                 at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> allPoints,
                                                 const int MAX_INTERSECTIONS
                                             ){
-    sortPointsClockwise(quad_0);
-    sortPointsClockwise(quad_1);
-
     // If we know that quad_0 and quad_1 are not intersecting even a tiny bit(minimum enclosing box check) 
     // we can skip below calculation altogether
     if (!checkSimpleIntersection(quad_0, quad_1)) return 0.0;
@@ -451,6 +448,19 @@ __global__ void calculateIoUCudaKernel(
     }
 }
 
+template <typename scalar_t>
+__global__ void sortPointsCudaKernel(
+    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> quad_0,
+    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> quad_1
+) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (idx < quad_0.size(0)){
+        sortPointsClockwise(quad_0[idx]);
+    } else if (idx < (quad_0.size(0) + quad_1.size(0))){
+        sortPointsClockwise(quad_1[idx]);
+    }
+}
 
 torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) {
     TORCH_CHECK(quad_0.numel() > 0 && quad_1.numel() > 0, "Input tensors must not empty");
@@ -465,6 +475,16 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) 
     // Calculate the number of blocks and threads
     dim3 blockSize(16, 16);
     dim3 gridSize((quad_0.size(0) + blockSize.x - 1) / blockSize.x, (quad_1.size(0) + blockSize.y - 1) / blockSize.y);
+
+    dim3 blockSizeSort(128, 1, 1);
+    dim3 gridSizeSort((quad_0.size(0) + quad_1.size(0) + blockSize.x - 1) / blockSize.x, 1, 1);
+
+    AT_DISPATCH_FLOATING_TYPES(quad_0.scalar_type(), "sortPointsCudaKernel", ([&] {
+        sortPointsCudaKernel<scalar_t><<<gridSizeSort, blockSizeSort>>>(
+            quad_0.packed_accessor32<scalar_t, 3, torch::RestrictPtrTraits>(),
+            quad_1.packed_accessor32<scalar_t, 3, torch::RestrictPtrTraits>()
+        );
+    }));
 
     AT_DISPATCH_FLOATING_TYPES(quad_0.scalar_type(), "calculateIoUCudaTorch", ([&] {
         calculateIoUCudaKernel<scalar_t><<<gridSize, blockSize>>>(
