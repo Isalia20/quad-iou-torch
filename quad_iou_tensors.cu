@@ -1,7 +1,4 @@
-#include <stdexcept>
 #include <torch/extension.h>
-#include <cuda.h>
-#include <cuda_runtime.h>
 
 template <typename scalar_t>
 struct Point {
@@ -338,7 +335,7 @@ __device__ inline void swapPoints(at::TensorAccessor<scalar_t, 2, at::RestrictPt
     points[i + 1][1] = tempY;
 }
 
-// Sorts a vector of points in clockwise order(can be upgraded to a better sorting algorithm)
+// Sorts a vector of points in clockwise order(should be upgraded to a better sorting algorithm)
 template <typename scalar_t>
 __device__ inline void sortPointsClockwise(at::TensorAccessor<scalar_t, 2, 
                                            at::RestrictPtrTraits, int> points) {
@@ -493,6 +490,8 @@ __global__ void polygonAreaCalculationKernel(
 
 torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) {
     TORCH_CHECK(quad_0.numel() > 0 && quad_1.numel() > 0, "Input tensors must not empty");
+    TORCH_CHECK(quad_0.size(1) == 4 && quad_1.size(1) == 4, "Input tensors must have 4 values on 2nd dim(dim=1)")
+    TORCH_CHECK(quad_0.size(1) == 2 && quad_1.size(1) == 2, "Input tensors must have 2 values on last dim(dim=2)")
     
     const int MAX_INTERSECTIONS = 8; // 8 intersections max
     // Create an output tensor and tensors for calculating intersection area
@@ -530,16 +529,7 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) 
             allPoints.packed_accessor32<scalar_t, 4, torch::RestrictPtrTraits>(),
             polygonAreas_d,
             MAX_INTERSECTIONS
-        );
-
-        // Check for any errors launching the kernel
-        auto error = cudaGetLastError();
-        if (error != cudaSuccess) {
-            std::string error_message = "CUDA error: ";
-            error_message += cudaGetErrorString(error);
-            throw std::runtime_error(error_message);
-        }
-        
+        );        
         cudaFree(polygonAreas_d);
     }));
     return iou_matrix;
