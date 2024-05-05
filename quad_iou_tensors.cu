@@ -241,7 +241,7 @@ __device__ inline Point<scalar_t> findCentroid(torch::PackedTensorAccessor32<sca
 }
 
 template <typename scalar_t>
-__device__ inline scalar_t polygonArea(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> polygon) {
+__device__ inline scalar_t calcPolygonArea(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> polygon) {
     scalar_t area = 0;
     int n = polygon.size(0);
     int j = 0; // Index of the previous valid vertex
@@ -398,7 +398,7 @@ __device__ inline scalar_t intersectionAreaCuda(at::TensorAccessor<scalar_t, 2, 
     findPointsInside(quad_0, quad_1, insidePoints, MAX_INTERSECTIONS);
     copyIntersectionInsidePoints(intersectionPoints, insidePoints, allPoints);
     sortPointsClockwise(allPoints);
-    scalar_t intersectArea = polygonArea(allPoints);
+    scalar_t intersectArea = calcPolygonArea(allPoints);
     return intersectArea;
 }
 
@@ -482,9 +482,9 @@ __global__ void polygonAreaCalculationKernel(
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (idx < quad_0.size(0)){
-        polygonAreas[idx] = polygonArea(quad_0[idx]);
+        polygonAreas[idx] = calcPolygonArea(quad_0[idx]);
     } else if (idx < (quad_0.size(0) + quad_1.size(0))){
-        polygonAreas[idx] = polygonArea(quad_1[idx - quad_0.size(0)]);
+        polygonAreas[idx] = calcPolygonArea(quad_1[idx - quad_0.size(0)]);
     }
 }
 
