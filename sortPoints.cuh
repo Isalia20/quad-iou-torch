@@ -1,3 +1,4 @@
+#define MAX_ALL_POINTS 16
 #include <torch/extension.h>
 #include "utils.cuh"
 
@@ -25,10 +26,10 @@ __device__ inline Point<scalar_t> findCentroid(const at::TensorAccessor<scalar_t
 }
 
 template <typename scalar_t>
-__device__ inline Point<scalar_t> findCentroid(torch::PackedTensorAccessor32<scalar_t,2,torch::RestrictPtrTraits> points) {
+__device__ inline Point<scalar_t> findCentroid(scalar_t points[MAX_ALL_POINTS][2]) {
     Point<scalar_t> centroid = {0.0, 0.0};
     int valid_point_counter = 0;
-    for (int i = 0; i < points.size(0); i++) {
+    for (int i = 0; i < MAX_ALL_POINTS; i++) {
         if (!isinf(points[i][0]) && !isinf(points[i][1])){
             centroid.x += points[i][0];
             centroid.y += points[i][1];
@@ -42,6 +43,16 @@ __device__ inline Point<scalar_t> findCentroid(torch::PackedTensorAccessor32<sca
 
 template<typename scalar_t>
 __device__ inline void swapPoints(at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> points, int i){
+    scalar_t tempX = points[i][0];
+    scalar_t tempY = points[i][1];
+    points[i][0] = points[i + 1][0];
+    points[i][1] = points[i + 1][1];
+    points[i + 1][0] = tempX;
+    points[i + 1][1] = tempY;
+}
+
+template<typename scalar_t>
+__device__ inline void swapPoints(scalar_t points[MAX_ALL_POINTS][2], int i){
     scalar_t tempX = points[i][0];
     scalar_t tempY = points[i][1];
     points[i][0] = points[i + 1][0];
@@ -69,13 +80,40 @@ __device__ inline bool comparePoints(const Point<scalar_t>& p1, const Point<scal
 
 namespace sortPoints{
     template <typename scalar_t>
-    __device__ inline void sortPointsClockwise(at::TensorAccessor<scalar_t, 2, 
-                                            at::RestrictPtrTraits, int> points) {
+    __device__ inline void sortPointsClockwise(at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> points) {
         // Calculate the centroid of the points
         Point<scalar_t> centroid = findCentroid(points);
         
         bool swapped = true; // Initialize swapped to true to enter the loop
         int n = points.size(0);
+        while (swapped) {
+            swapped = false; // Set swapped to false at the beginning of the loop
+            for (int i = 0; i < n - 1; i++) {
+                // Skip points where both x and y are inf
+                if (isinf(points[i][0]) && isinf(points[i][1])) continue;
+                if (isinf(points[i + 1][0]) && isinf(points[i + 1][1])) continue;
+                Point<scalar_t> p1 = {points[i][0], points[i][1]};
+                Point<scalar_t> p2 = {points[i + 1][0], points[i + 1][1]};
+
+                // Using the comparison function to determine if the points are out of order
+                if (!comparePoints(p1, p2, centroid)) {
+                    // Swap points if they are out of order
+                    swapPoints(points, i);
+                    swapped = true; // Indicate a swap occurred
+                }
+            }
+            // Decrement n because the last element is now guaranteed to be in place
+            --n;
+        }
+    }
+
+    template <typename scalar_t>
+    __device__ inline void sortPointsClockwise(scalar_t points[MAX_ALL_POINTS][2]) {
+        // Calculate the centroid of the points
+        Point<scalar_t> centroid = findCentroid(points);
+        
+        bool swapped = true; // Initialize swapped to true to enter the loop
+        int n = MAX_ALL_POINTS;
         while (swapped) {
             swapped = false; // Set swapped to false at the beginning of the loop
             for (int i = 0; i < n - 1; i++) {

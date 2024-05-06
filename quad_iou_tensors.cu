@@ -1,3 +1,6 @@
+#define MAX_INTERSECTION_POINTS 8
+#define MAX_INSIDE_POINTS 8
+#define MAX_ALL_POINTS 16
 #include <torch/extension.h>
 #include "polygonArea.cuh"
 #include "insidePoints.cuh"
@@ -6,23 +9,25 @@
 #include "allPoints.cuh"
 #include "simpleIntersectCheck.cuh"
 #include "checks.cuh"
-
+#include <cmath>
 
 template <typename scalar_t>
 __device__ inline scalar_t intersectionArea(at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0,
-                                                at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1,
-                                                at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> interesction_points,
-                                                at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> inside_points,
-                                                at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> all_points,
-                                                const int MAX_INTERSECTIONS
+                                            at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1
                                             ){
     // If we know that quad_0 and quad_1 are not intersecting even a tiny bit(minimum enclosing box check) 
     // we can skip below calculation altogether
     if (!checkSimpleIntersection(quad_0, quad_1)) return 0.0;
 
-    intersectionPoints::findIntersectionPoints(quad_0, quad_1, interesction_points, MAX_INTERSECTIONS);
-    insidePoints::findPointsInside(quad_0, quad_1, inside_points, MAX_INTERSECTIONS);
-    allPoints::copyIntersectionInsidePoints(interesction_points, inside_points, all_points);
+    scalar_t intersection_points[MAX_INTERSECTION_POINTS][2];
+    scalar_t inside_points[MAX_INSIDE_POINTS][2];
+    scalar_t all_points[MAX_ALL_POINTS][2];
+
+    allPoints::fillPointsWithInfinity(intersection_points, inside_points, all_points);
+
+    intersectionPoints::findIntersectionPoints(quad_0, quad_1, intersection_points);
+    insidePoints::findPointsInside(quad_0, quad_1, inside_points);
+    allPoints::copyIntersectionInsidePoints(intersection_points, inside_points, all_points);
     sortPoints::sortPointsClockwise(all_points);
     scalar_t intersectArea = polygonArea::calcPolygonArea(all_points);
     return intersectArea;
@@ -41,17 +46,14 @@ __device__ inline scalar_t unionArea(const at::TensorAccessor<scalar_t, 2, at::R
 
 template <typename scalar_t>
 __device__ inline scalar_t calculateIoU(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0,
-                                            const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1,
-                                            at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> intersectionPoints,
-                                            at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> insidePoints,
-                                            at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> allPoints,
-                                            int quad_0_idx,
-                                            int quad_1_idx,
-                                            int quad_0_size,
-                                            scalar_t* polygonAreas,
-                                            const int MAX_INTERSECTIONS){
+                                        const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1,
+                                        int quad_0_idx,
+                                        int quad_1_idx,
+                                        int quad_0_size,
+                                        scalar_t* polygonAreas){
     const scalar_t epsilon = 0.00001;
-    scalar_t intersect_area = intersectionArea(quad_0, quad_1, intersectionPoints, insidePoints, allPoints, MAX_INTERSECTIONS);
+
+    scalar_t intersect_area = intersectionArea(quad_0, quad_1);
     return intersect_area / (unionArea(quad_0, quad_1, quad_0_idx, quad_1_idx, quad_0_size, polygonAreas, intersect_area) + epsilon);
 }
 
@@ -60,11 +62,7 @@ __global__ void calculateIoUKernel(
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> quad_0,
     const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> quad_1,
     torch::PackedTensorAccessor32<scalar_t,2,torch::RestrictPtrTraits> iou_matrix,
-    torch::PackedTensorAccessor32<scalar_t,4,torch::RestrictPtrTraits> intersectionPoints,
-    torch::PackedTensorAccessor32<scalar_t,4,torch::RestrictPtrTraits> insidePoints,
-    torch::PackedTensorAccessor32<scalar_t,4,torch::RestrictPtrTraits> allPoints,
-    scalar_t* polygonAreas,
-    const int MAX_INTERSECTIONS
+    scalar_t* polygonAreas
     ) {
 
     int idx1 = blockIdx.x * blockDim.x + threadIdx.x;
@@ -73,14 +71,10 @@ __global__ void calculateIoUKernel(
     if ((idx1 < quad_0.size(0)) && (idx2 < quad_1.size(0))){
         iou_matrix[idx1][idx2] = calculateIoU(quad_0[idx1], 
                                               quad_1[idx2], 
-                                              intersectionPoints[idx1][idx2],
-                                              insidePoints[idx1][idx2],
-                                              allPoints[idx1][idx2],
                                               idx1,
                                               idx2,
                                               quad_0.size(0),
-                                              polygonAreas,
-                                              MAX_INTERSECTIONS
+                                              polygonAreas
                                               );
     }
 }
@@ -117,12 +111,8 @@ __global__ void polygonAreaCalculationKernel(
 torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) {
     check_tensor_validity(quad_0, quad_1);
     
-    const int MAX_INTERSECTIONS = 8; // 8 intersections max
     // Create an output tensor and tensors for calculating intersection area
     torch::Tensor iou_matrix = torch::zeros({quad_0.size(0), quad_1.size(0)}, quad_0.options());
-    torch::Tensor intersectionPoints = torch::full({quad_0.size(0), quad_1.size(0), MAX_INTERSECTIONS, 2}, std::numeric_limits<float>::infinity(), quad_0.options());
-    torch::Tensor insidePoints = torch::full({quad_0.size(0), quad_1.size(0), MAX_INTERSECTIONS, 2}, std::numeric_limits<float>::infinity(), quad_0.options());
-    torch::Tensor allPoints = torch::full({quad_0.size(0), quad_1.size(0), MAX_INTERSECTIONS * 2, 2}, std::numeric_limits<float>::infinity(), quad_0.options());
 
     AT_DISPATCH_FLOATING_TYPES(quad_0.scalar_type(), "calculateIoUCudaTorch", ([&] {
         scalar_t* polygonAreas_d;
@@ -148,13 +138,10 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) 
             quad_0.packed_accessor32<scalar_t, 3, torch::RestrictPtrTraits>(),
             quad_1.packed_accessor32<scalar_t, 3, torch::RestrictPtrTraits>(),
             iou_matrix.packed_accessor32<scalar_t, 2, torch::RestrictPtrTraits>(),
-            intersectionPoints.packed_accessor32<scalar_t, 4, torch::RestrictPtrTraits>(),
-            insidePoints.packed_accessor32<scalar_t, 4, torch::RestrictPtrTraits>(),
-            allPoints.packed_accessor32<scalar_t, 4, torch::RestrictPtrTraits>(),
-            polygonAreas_d,
-            MAX_INTERSECTIONS
+            polygonAreas_d
         );        
         cudaFree(polygonAreas_d);
     }));
+    //
     return iou_matrix;
 }
