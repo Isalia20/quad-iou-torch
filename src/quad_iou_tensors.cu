@@ -2,6 +2,7 @@
 #define MAX_INSIDE_POINTS 8
 #define MAX_ALL_POINTS 16
 #include <torch/extension.h>
+#include <cmath>
 #include "polygonArea.cuh"
 #include "insidePoints.cuh"
 #include "intersectionPoints.cuh"
@@ -9,7 +10,7 @@
 #include "allPoints.cuh"
 #include "simpleIntersectCheck.cuh"
 #include "checks.cuh"
-#include <cmath>
+
 
 template <typename scalar_t>
 __device__ inline scalar_t intersectionArea(at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0,
@@ -17,12 +18,11 @@ __device__ inline scalar_t intersectionArea(at::TensorAccessor<scalar_t, 2, at::
                                             ){
     // If we know that quad_0 and quad_1 are not intersecting even a tiny bit(minimum enclosing box check) 
     // we can skip below calculation altogether
-    if (!checkSimpleIntersection(quad_0, quad_1)) return 0.0;
+    if (!simpleIntersectCheck::checkSimpleIntersection(quad_0, quad_1)) return 0.0;
 
     scalar_t intersection_points[MAX_INTERSECTION_POINTS][2];
     scalar_t inside_points[MAX_INSIDE_POINTS][2];
     scalar_t all_points[MAX_ALL_POINTS][2];
-
     allPoints::fillPointsWithInfinity(intersection_points, inside_points, all_points);
 
     intersectionPoints::findIntersectionPoints(quad_0, quad_1, intersection_points);
