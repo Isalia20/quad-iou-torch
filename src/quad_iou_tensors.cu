@@ -69,13 +69,17 @@ __global__ void calculateIoUKernel(
     int idx2 = blockIdx.y * blockDim.y + threadIdx.y;
 
     if ((idx1 < quad_0.size(0)) && (idx2 < quad_1.size(0))){
-        iou_matrix[idx1][idx2] = calculateIoU(quad_0[idx1], 
-                                              quad_1[idx2], 
-                                              idx1,
-                                              idx2,
-                                              quad_0.size(0),
-                                              polygonAreas
-                                              );
+        scalar_t iou = calculateIoU(quad_0[idx1], 
+                                    quad_1[idx2], 
+                                    idx1,
+                                    idx2,
+                                    quad_0.size(0),
+                                    polygonAreas
+                                    );
+        // avoid access if iou is 0, since iou matrix is initialized to 0s
+        if (iou != 0.0){
+            iou_matrix[idx1][idx2] = iou;
+        }
     }
 }
 
