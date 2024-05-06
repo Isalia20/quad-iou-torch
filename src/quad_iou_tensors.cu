@@ -142,6 +142,5 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) 
         );        
         cudaFree(polygonAreas_d);
     }));
-    //
     return iou_matrix;
 }
