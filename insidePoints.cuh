@@ -1,3 +1,4 @@
+#define MAX_INSIDE_POINTS 8
 #include <torch/extension.h>
 #include "utils.cuh"
 
@@ -58,6 +59,31 @@ namespace insidePoints{
             Point<scalar_t> quad_1_point = {quad_1[i][0], quad_1[i][1]};
             if (isPointInsideQuadrilateral(quad_1_point, quad_0) == 1) {
                 if (numInsidePoints < maxPoints) {
+                    inside_points[numInsidePoints][0] = quad_1[i][0];
+                    inside_points[numInsidePoints][1] = quad_1[i][1];
+                    numInsidePoints++;
+                }
+            }
+        }
+    }
+
+    template <typename scalar_t>
+    __device__ inline void findPointsInside(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0, 
+                                            const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1, 
+                                            scalar_t inside_points[MAX_INSIDE_POINTS][2]) {
+        int numInsidePoints = 0;
+        for (int i = 0; i < 4; i++) {
+            Point<scalar_t> quad_0_point = {quad_0[i][0], quad_0[i][1]};
+            if (isPointInsideQuadrilateral(quad_0_point, quad_1) == 1) {
+                if (numInsidePoints < MAX_INSIDE_POINTS) {
+                    inside_points[numInsidePoints][0] = quad_0[i][0];
+                    inside_points[numInsidePoints][1] = quad_0[i][1];
+                    numInsidePoints++;
+                }
+            }
+            Point<scalar_t> quad_1_point = {quad_1[i][0], quad_1[i][1]};
+            if (isPointInsideQuadrilateral(quad_1_point, quad_0) == 1) {
+                if (numInsidePoints < MAX_INSIDE_POINTS) {
                     inside_points[numInsidePoints][0] = quad_1[i][0];
                     inside_points[numInsidePoints][1] = quad_1[i][1];
                     numInsidePoints++;
