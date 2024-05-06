@@ -125,7 +125,7 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) 
         dim3 blockSize(16, 16);
         dim3 gridSize((quad_0.size(0) + blockSize.x - 1) / blockSize.x, (quad_1.size(0) + blockSize.y - 1) / blockSize.y);
         dim3 blockSizeQuad(128, 1, 1);
-        dim3 gridSizeQuad((quad_0.size(0) + quad_1.size(0) + blockSize.x - 1) / blockSizeQuad.x, 1, 1);
+        dim3 gridSizeQuad((quad_0.size(0) + quad_1.size(0) + blockSizeQuad.x - 1) / blockSizeQuad.x, 1, 1);
 
         sortPointsKernel<scalar_t><<<gridSizeQuad, blockSizeQuad>>>(
             quad_0.packed_accessor32<scalar_t, 3, torch::RestrictPtrTraits>(),
