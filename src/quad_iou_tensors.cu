@@ -113,9 +113,9 @@ __global__ void polygonAreaCalculationKernel(
 }
 
 torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) {
-    check_tensor_validity(quad_0, quad_1);
+    checks::check_tensor_validity(quad_0, quad_1);
     
-    // Create an output tensor and tensors for calculating intersection area
+    // Create an output tensor
     torch::Tensor iou_matrix = torch::zeros({quad_0.size(0), quad_1.size(0)}, quad_0.options());
 
     AT_DISPATCH_FLOATING_TYPES(quad_0.scalar_type(), "calculateIoUCudaTorch", ([&] {
@@ -143,7 +143,7 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) 
             quad_1.packed_accessor32<scalar_t, 3, torch::RestrictPtrTraits>(),
             iou_matrix.packed_accessor32<scalar_t, 2, torch::RestrictPtrTraits>(),
             polygonAreas_d
-        );        
+        );
         cudaFree(polygonAreas_d);
     }));
     return iou_matrix;
