@@ -81,39 +81,7 @@ __device__ inline bool doIntersect(const Point<scalar_t>& p1, const Point<scalar
     return false; // Doesn't fall in any of the above cases
 }
 
-namespace intersectionPoints{
-    template <typename scalar_t>
-    __device__ inline void findIntersectionPoints(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0, 
-                                                  const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1, 
-                                                  at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> intersections) {
-        int numIntersections = 0;
-        for (int i = 0; i < 4; ++i) {
-            for (int j = 0; j < 4; ++j) {
-                Point<scalar_t> intersection;
-                Point<scalar_t> quad_0_point_one = {quad_0[i][0], quad_0[i][1]};
-                Point<scalar_t> quad_0_point_two = {quad_0[(i + 1) % 4][0], quad_0[(i + 1) % 4][1]};
-                Point<scalar_t> quad_1_point_one = {quad_1[j][0], quad_1[j][1]};
-                Point<scalar_t> quad_1_point_two = {quad_1[(j + 1) % 4][0], quad_1[(j + 1) % 4][1]};
-                if (doIntersect(quad_0_point_one, quad_0_point_two, quad_1_point_one, quad_1_point_two, intersection)) {
-                    // Check if this intersection is already in the intersections array
-                    bool alreadyExists = false;
-                    for (int k = 0; k < numIntersections; ++k) {
-                        Point<scalar_t> intersection_point = {intersections[k][0], intersections[k][1]};
-                        if (arePointsEqual(intersection_point, intersection)) {
-                            alreadyExists = true;
-                            break;
-                        }
-                    }
-                    if (!alreadyExists && numIntersections < MAX_INTERSECTION_POINTS) {
-                        intersections[numIntersections][0] = intersection.x;
-                        intersections[numIntersections][1] = intersection.y;
-                        numIntersections++;
-                    }
-                }
-            }
-        }
-    }
-    
+namespace intersectionPoints{    
     template <typename scalar_t>
     __device__ inline void findIntersectionPoints(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0, 
                                                   const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1, 
