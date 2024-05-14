@@ -81,19 +81,6 @@ __global__ void calculateIoUKernel(
     }
 }
 
-template <typename scalar_t>
-__global__ void sortPointsKernel(
-    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> quad_0,
-    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> quad_1
-) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (idx < quad_0.size(0)){
-        sortPoints::sortPointsClockwise(quad_0[idx]);
-    } else if (idx < (quad_0.size(0) + quad_1.size(0))){
-        sortPoints::sortPointsClockwise(quad_1[idx - quad_0.size(0)]);
-    }
-}
 
 template <typename scalar_t>
 __global__ void polygonAreaCalculationKernel(
@@ -104,8 +91,11 @@ __global__ void polygonAreaCalculationKernel(
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (idx < quad_0.size(0)){
+        // Sort the points first since we are using gaussian formula
+        sortPoints::sortPointsClockwise(quad_0[idx]);
         polygonAreas[idx] = polygonArea::calcPolygonArea(quad_0[idx]);
     } else if (idx < (quad_0.size(0) + quad_1.size(0))){
+        sortPoints::sortPointsClockwise(quad_1[idx - quad_0.size(0)]);
         polygonAreas[idx] = polygonArea::calcPolygonArea(quad_1[idx - quad_0.size(0)]);
     }
 }
@@ -124,11 +114,6 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) 
         dim3 gridSize((quad_0.size(0) + blockSize.x - 1) / blockSize.x, (quad_1.size(0) + blockSize.y - 1) / blockSize.y);
         dim3 blockSizeQuad(128, 1, 1);
         dim3 gridSizeQuad((quad_0.size(0) + quad_1.size(0) + blockSizeQuad.x - 1) / blockSizeQuad.x, 1, 1);
-
-        sortPointsKernel<scalar_t><<<gridSizeQuad, blockSizeQuad>>>(
-            quad_0.packed_accessor32<scalar_t, 3, torch::RestrictPtrTraits>(),
-            quad_1.packed_accessor32<scalar_t, 3, torch::RestrictPtrTraits>()
-        );
 
         polygonAreaCalculationKernel<scalar_t><<<gridSizeQuad, blockSizeQuad>>>(
             polygonAreas_d,
