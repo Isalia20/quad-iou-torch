@@ -76,7 +76,6 @@ __global__ void calculateIoUKernel(
                                     quad_0.size(0),
                                     polygonAreas
                                     );
-        // avoid access if iou is 0, since iou matrix is initialized to 0s
         iou_matrix[idx1][idx2] = iou;
     }
 }
