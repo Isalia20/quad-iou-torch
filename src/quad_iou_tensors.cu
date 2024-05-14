@@ -77,9 +77,7 @@ __global__ void calculateIoUKernel(
                                     polygonAreas
                                     );
         // avoid access if iou is 0, since iou matrix is initialized to 0s
-        if (iou != 0.0){
-            iou_matrix[idx1][idx2] = iou;
-        }
+        iou_matrix[idx1][idx2] = iou;
     }
 }
 
@@ -116,7 +114,7 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) 
     checks::check_tensor_validity(quad_0, quad_1);
     
     // Create an output tensor
-    torch::Tensor iou_matrix = torch::zeros({quad_0.size(0), quad_1.size(0)}, quad_0.options());
+    torch::Tensor iou_matrix = torch::empty({quad_0.size(0), quad_1.size(0)}, quad_0.options());
 
     AT_DISPATCH_ALL_TYPES(quad_0.scalar_type(), "calculateIoUCudaTorch", ([&] {
         scalar_t* polygonAreas_d;
