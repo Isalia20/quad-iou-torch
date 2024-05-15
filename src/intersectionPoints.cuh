@@ -44,8 +44,7 @@ __device__ inline bool doIntersect(const Point<scalar_t>& p1, const Point<scalar
         scalar_t determinant = a1 * b2 - a2 * b1;
 
         if (abs(determinant) < 1e-10) {
-            return false; // The lines are parallel. This is simplified
-                          // by returning false here.
+            return false; // The lines are parallel
         } else {
             intersection.x = (b2 * c1 - b1 * c2) / determinant;
             intersection.y = (a1 * c2 - a2 * c1) / determinant;
