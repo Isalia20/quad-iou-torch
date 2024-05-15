@@ -4,7 +4,7 @@
 
 namespace polygonArea{
     template <typename scalar_t>
-    __device__ inline scalar_t calcQuadrilateralArea(const scalar_t* quadrilateral) {
+    __device__ inline scalar_t calcQuadrilateralArea(const scalar_t *quadrilateral) {
         scalar_t area = 0.0;
         const int vertices = 4;
 

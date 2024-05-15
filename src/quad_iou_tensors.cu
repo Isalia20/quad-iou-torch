@@ -61,7 +61,7 @@ template <typename scalar_t>
 __device__ inline scalar_t unionArea(int quad_0_idx,
                                      int quad_1_idx,
                                      int quad_0_size,
-                                     scalar_t* polygonAreas,
+                                     scalar_t *polygonAreas,
                                      scalar_t intersectArea) {
     return polygonAreas[quad_0_idx] + \
                 polygonAreas[quad_0_size + quad_1_idx] - \
@@ -75,7 +75,7 @@ __device__ inline scalar_t calculateIoU(
     int quad_0_idx,
     int quad_1_idx,
     int quad_0_size,
-    scalar_t* polygonAreas) {
+    scalar_t *polygonAreas) {
 
     const scalar_t epsilon = 0.00001;
 
@@ -97,8 +97,8 @@ __global__ void calculateIoUKernel(
 
     if ((idx1 < quad_0_size) && (idx2 < quad_1_size)) {
         // todo used shared memory here
-        scalar_t* quad_first = &quad_0[idx1 * 4 * 2];
-        scalar_t* quad_second = &quad_1[idx2 * 4 * 2];
+        scalar_t *quad_first = &quad_0[idx1 * 4 * 2];
+        scalar_t *quad_second = &quad_1[idx2 * 4 * 2];
         iou_matrix[idx1 * quad_1_size + idx2] = calculateIoU(quad_first,
                                                              quad_second,
                                                              idx1,
@@ -121,11 +121,11 @@ __global__ void polygonAreaCalculationKernel(
 
     if (idx < quad_0_size) {
         // Sort the points first since we are using gaussian formula
-        scalar_t* quadrilateral = &quad_0[idx * 4 * 2];
+        scalar_t *quadrilateral = &quad_0[idx * 4 * 2];
         sortPoints::sortQuadPointsClockwise(quadrilateral);
         polygonAreas[idx] = polygonArea::calcQuadrilateralArea(quadrilateral);
     } else if (idx < (quad_0_size + quad_1_size)) {
-        scalar_t* quadrilateral = &quad_1[(idx - quad_0_size) * 4 * 2];
+        scalar_t *quadrilateral = &quad_1[(idx - quad_0_size) * 4 * 2];
         sortPoints::sortQuadPointsClockwise(quadrilateral);
         polygonAreas[idx] = polygonArea::calcQuadrilateralArea(quadrilateral);
     }
@@ -137,7 +137,7 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) 
     torch::Tensor iou_matrix = torch::empty({quad_0.size(0), quad_1.size(0)}, quad_0.options());
 
     AT_DISPATCH_ALL_TYPES(quad_0.scalar_type(), "calculateIoUCudaTorch", ([&] {
-        scalar_t* polygonAreas_d;
+        scalar_t *polygonAreas_d;
         cudaMalloc((void**)&polygonAreas_d, (quad_0.size(0) + quad_1.size(0)) * sizeof(scalar_t));
 
         dim3 blockSize(16, 16);
