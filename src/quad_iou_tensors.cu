@@ -113,19 +113,23 @@ __global__ void calculateIoUKernel(
 
 template <typename scalar_t>
 __global__ void polygonAreaCalculationKernel(
-    scalar_t* polygonAreas,
-    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> quad_0,
-    torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> quad_1
+    scalar_t *polygonAreas,
+    scalar_t *quad_0,
+    scalar_t *quad_1,
+    int quad_0_count,
+    int quad_1_count
 ) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (idx < quad_0.size(0)) {
+    if (idx < quad_0_count) {
         // Sort the points first since we are using gaussian formula
-        sortPoints::sortPointsClockwise(quad_0[idx]);
-        polygonAreas[idx] = polygonArea::calcPolygonArea(quad_0[idx]);
-    } else if (idx < (quad_0.size(0) + quad_1.size(0))) {
-        sortPoints::sortPointsClockwise(quad_1[idx - quad_0.size(0)]);
-        polygonAreas[idx] = polygonArea::calcPolygonArea(quad_1[idx - quad_0.size(0)]);
+        scalar_t* quadrilateral = &quad_0[idx * 4 * 2];
+        sortPoints::sortQuadPointsClockwise(quadrilateral);
+        polygonAreas[idx] = polygonArea::calcQuadrilateralArea(quadrilateral);
+    } else if (idx < (quad_0_count + quad_1_count)) {
+        scalar_t* quadrilateral = &quad_1[(idx - quad_0_count) * 4 * 2];
+        sortPoints::sortQuadPointsClockwise(quadrilateral);
+        polygonAreas[idx] = polygonArea::calcQuadrilateralArea(quadrilateral);
     }
 }
 
@@ -146,8 +150,10 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) 
 
         polygonAreaCalculationKernel<scalar_t><<<gridSizeQuad, blockSizeQuad>>>(
             polygonAreas_d,
-            quad_0.packed_accessor32<scalar_t, 3, torch::RestrictPtrTraits>(),
-            quad_1.packed_accessor32<scalar_t, 3, torch::RestrictPtrTraits>());
+            quad_0.data_ptr<scalar_t>(),
+            quad_1.data_ptr<scalar_t>(),
+            quad_0.size(0),
+            quad_1.size(0));
 
         calculateIoUKernel<scalar_t><<<gridSize, blockSize>>>(
             quad_0.packed_accessor32<scalar_t, 3, torch::RestrictPtrTraits>(),
