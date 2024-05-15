@@ -30,8 +30,8 @@
 
 template <typename scalar_t>
 __device__ inline scalar_t intersectionArea(
-    at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0,
-    at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1
+    const scalar_t *quad_0,
+    const scalar_t *quad_1
 ) {
     // If we know that quad_0 and quad_1 are not
     // intersecting even a tiny bit(minimum enclosing box check)
@@ -70,8 +70,8 @@ __device__ inline scalar_t unionArea(int quad_0_idx,
 
 template <typename scalar_t>
 __device__ inline scalar_t calculateIoU(
-    const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0,
-    const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1,
+    const scalar_t *quad_0,
+    const scalar_t *quad_1,
     int quad_0_idx,
     int quad_1_idx,
     int quad_0_size,
@@ -80,33 +80,31 @@ __device__ inline scalar_t calculateIoU(
     const scalar_t epsilon = 0.00001;
 
     scalar_t intersect_area = intersectionArea(quad_0, quad_1);
-    return intersect_area /
-            (unionArea(quad_0_idx,
-                       quad_1_idx,
-                       quad_0_size,
-                       polygonAreas,
-                       intersect_area)
-             + epsilon);
+    return intersect_area / (unionArea(quad_0_idx, quad_1_idx, quad_0_size, polygonAreas, intersect_area) + epsilon);
 }
 
 template <typename scalar_t>
 __global__ void calculateIoUKernel(
-    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> quad_0,
-    const torch::PackedTensorAccessor32<scalar_t,3,torch::RestrictPtrTraits> quad_1,
-    torch::PackedTensorAccessor32<scalar_t,2,torch::RestrictPtrTraits> iou_matrix,
-    scalar_t* polygonAreas
+    scalar_t *quad_0,
+    scalar_t *quad_1,
+    scalar_t *iou_matrix,
+    scalar_t *polygonAreas,
+    int quad_0_size,
+    int quad_1_size
     ) {
     int idx1 = blockIdx.x * blockDim.x + threadIdx.x;
     int idx2 = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if ((idx1 < quad_0.size(0)) && (idx2 < quad_1.size(0))) {
-        scalar_t iou = calculateIoU(quad_0[idx1],
-                                    quad_1[idx2],
-                                    idx1,
-                                    idx2,
-                                    quad_0.size(0),
-                                    polygonAreas);
-        iou_matrix[idx1][idx2] = iou;
+    if ((idx1 < quad_0_size) && (idx2 < quad_1_size)) {
+        // todo used shared memory here
+        scalar_t* quad_first = &quad_0[idx1 * 4 * 2];
+        scalar_t* quad_second = &quad_1[idx2 * 4 * 2];
+        iou_matrix[idx1 * quad_1_size + idx2] = calculateIoU(quad_first,
+                                                             quad_second,
+                                                             idx1,
+                                                             idx2,
+                                                             quad_0_size,
+                                                             polygonAreas);
     }
 }
 
@@ -116,18 +114,18 @@ __global__ void polygonAreaCalculationKernel(
     scalar_t *polygonAreas,
     scalar_t *quad_0,
     scalar_t *quad_1,
-    int quad_0_count,
-    int quad_1_count
+    int quad_0_size,
+    int quad_1_size
 ) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (idx < quad_0_count) {
+    if (idx < quad_0_size) {
         // Sort the points first since we are using gaussian formula
         scalar_t* quadrilateral = &quad_0[idx * 4 * 2];
         sortPoints::sortQuadPointsClockwise(quadrilateral);
         polygonAreas[idx] = polygonArea::calcQuadrilateralArea(quadrilateral);
-    } else if (idx < (quad_0_count + quad_1_count)) {
-        scalar_t* quadrilateral = &quad_1[(idx - quad_0_count) * 4 * 2];
+    } else if (idx < (quad_0_size + quad_1_size)) {
+        scalar_t* quadrilateral = &quad_1[(idx - quad_0_size) * 4 * 2];
         sortPoints::sortQuadPointsClockwise(quadrilateral);
         polygonAreas[idx] = polygonArea::calcQuadrilateralArea(quadrilateral);
     }
@@ -156,10 +154,12 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) 
             quad_1.size(0));
 
         calculateIoUKernel<scalar_t><<<gridSize, blockSize>>>(
-            quad_0.packed_accessor32<scalar_t, 3, torch::RestrictPtrTraits>(),
-            quad_1.packed_accessor32<scalar_t, 3, torch::RestrictPtrTraits>(),
-            iou_matrix.packed_accessor32<scalar_t, 2, torch::RestrictPtrTraits>(),
-            polygonAreas_d);
+            quad_0.data_ptr<scalar_t>(),
+            quad_1.data_ptr<scalar_t>(),
+            iou_matrix.data_ptr<scalar_t>(),
+            polygonAreas_d,
+            quad_0.size(0),
+            quad_1.size(0));
         cudaFree(polygonAreas_d);
     }));
     return iou_matrix;

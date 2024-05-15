@@ -4,4 +4,4 @@ quad_iou.egg-info/*
 .vscode/*
 log/*
 quad_iou_test.egg-info/*
-__pycache__/*
+*__pycache__
