@@ -9,6 +9,7 @@ __device__ inline void findMinMaxQuadCoordinate(const at::TensorAccessor<scalar_
     max_val = box[0][coord_index];
 
     // Loop through the remaining points
+    #pragma unroll
     for (int i = 1; i < 4; ++i) {
         scalar_t val = box[i][coord_index];
         if (val < min_val) {

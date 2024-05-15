@@ -6,6 +6,7 @@ template <typename scalar_t>
 __device__ inline scalar_t findMaxQuadCoordinate(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> box, Coordinate coord){
     // Find the maximum x-coordinate or y-coordinate of the quadrilateral based on the coord value
     scalar_t max_value = box[0][static_cast<int>(coord)];
+    #pragma unroll
     for (int i = 1; i < 4; ++i) {
         if (box[i][static_cast<int>(coord)] > max_value) {
             max_value = box[i][static_cast<int>(coord)];
@@ -22,6 +23,7 @@ __device__ inline int isPointInsideQuadrilateral(const Point<scalar_t>& point_to
     if (point_to_check.x > max_x) return -1;
     if (point_to_check.y > max_y) return -1;
 
+    #pragma unroll
     // For each edge of the quadrilateral
     for (int i = 0; i < 4; i++) {
         // Get the current edge's start and end points
@@ -46,6 +48,7 @@ namespace insidePoints{
                                             const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1, 
                                             scalar_t inside_points[MAX_INSIDE_POINTS][2]) {
         int numInsidePoints = 0;
+        #pragma unroll
         for (int i = 0; i < 4; i++) {
             Point<scalar_t> quad_0_point = {quad_0[i][0], quad_0[i][1]};
             if (isPointInsideQuadrilateral(quad_0_point, quad_1) == 1) {

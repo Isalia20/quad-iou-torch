@@ -13,6 +13,7 @@ template <typename scalar_t>
 __device__ inline Point<scalar_t> findCentroid(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> points) {
     Point<scalar_t> centroid = {0.0, 0.0};
     int valid_point_counter = 0;
+    #pragma unroll
     for (int i = 0; i < points.size(0); i++) {
         if (!isinf(points[i][0]) && !isinf(points[i][1])){
             centroid.x += points[i][0];
@@ -29,6 +30,7 @@ template <typename scalar_t>
 __device__ inline Point<scalar_t> findCentroid(scalar_t points[MAX_ALL_POINTS][2]) {
     Point<scalar_t> centroid = {0.0, 0.0};
     int valid_point_counter = 0;
+    #pragma unroll
     for (int i = 0; i < MAX_ALL_POINTS; i++) {
         if (!isinf(points[i][0]) && !isinf(points[i][1])){
             centroid.x += points[i][0];

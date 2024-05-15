@@ -5,6 +5,7 @@
 
 template <typename scalar_t>
 __device__ inline void fillArrayWithInfinity(scalar_t points[][2], int num_points){
+    #pragma unroll
     for (int i = 0; i < num_points; i++){
         points[i][0] = INFINITY;
         points[i][1] = INFINITY;
@@ -26,6 +27,7 @@ namespace allPoints {
         int nextAllPointIndex = 0;
 
         // Copy valid intersection points to allPoints
+        #pragma unroll
         for (int i = 0; i < MAX_INTERSECTION_POINTS; i++) {
             if (!isinf(intersectionPoints[i][0])) {
                 allPoints[nextAllPointIndex][0] = intersectionPoints[i][0];
@@ -34,6 +36,7 @@ namespace allPoints {
             }
         }
 
+        #pragma unroll
         // Copy valid inside points to allPoints
         for (int i = 0; i < MAX_INSIDE_POINTS; i++){
             if (!isinf(insidePoints[i][0])){

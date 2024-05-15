@@ -10,6 +10,7 @@ namespace polygonArea{
         int j = 0; // Index of the previous valid vertex
 
         // Initialize the previous valid vertex
+        #pragma unroll
         for (int i = 0; i < n; ++i) {
             if (!isinf(polygon[i][0]) && !isinf(polygon[i][1])) {
                 j = i;
@@ -18,6 +19,7 @@ namespace polygonArea{
         }
 
         // Calculate the sum for the Shoelace formula
+        #pragma unroll
         for (int i = j + 1; i < n; ++i) {
             if (isinf(polygon[i][0]) && isinf(polygon[i][1])) continue; // Skip invalid vertices
             area += (polygon[j][0] * polygon[i][1] - polygon[i][0] * polygon[j][1]);
@@ -39,6 +41,7 @@ namespace polygonArea{
         int j = 0; // Index of the previous valid vertex
 
         // Initialize the previous valid vertex
+        #pragma unroll
         for (int i = 0; i < n; ++i) {
             if (!isinf(polygon[i][0]) && !isinf(polygon[i][1])) {
                 j = i;
@@ -47,6 +50,7 @@ namespace polygonArea{
         }
 
         // Calculate the sum for the Shoelace formula
+        #pragma unroll
         for (int i = j + 1; i < n; ++i) {
             if (isinf(polygon[i][0]) && isinf(polygon[i][1])) continue; // Skip invalid vertices
             area += (polygon[j][0] * polygon[i][1] - polygon[i][0] * polygon[j][1]);

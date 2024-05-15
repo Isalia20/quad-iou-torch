@@ -67,6 +67,7 @@ namespace intersectionPoints{
                                                   const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1, 
                                                   scalar_t intersections[MAX_INTERSECTION_POINTS][2]) {
         int numIntersections = 0;
+        #pragma unroll
         for (int i = 0; i < 4; ++i) {
             for (int j = 0; j < 4; ++j) {
                 Point<scalar_t> intersection;
