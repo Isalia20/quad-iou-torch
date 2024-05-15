@@ -2,3 +2,6 @@ build/*
 dist/*
 quad_iou.egg-info/*
 .vscode/*
+log/*
+quad_iou_test.egg-info/*
+*__pycache__

@@ -63,18 +63,18 @@ __device__ inline bool doIntersect(const Point<scalar_t>& p1, const Point<scalar
 
 namespace intersectionPoints{    
     template <typename scalar_t>
-    __device__ inline void findIntersectionPoints(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_0, 
-                                                  const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> quad_1, 
+    __device__ inline void findIntersectionPoints(const scalar_t *quad_0, 
+                                                  const scalar_t *quad_1, 
                                                   scalar_t intersections[MAX_INTERSECTION_POINTS][2]) {
         int numIntersections = 0;
         #pragma unroll
         for (int i = 0; i < 4; ++i) {
             for (int j = 0; j < 4; ++j) {
                 Point<scalar_t> intersection;
-                Point<scalar_t> quad_0_point_one = {quad_0[i][0], quad_0[i][1]};
-                Point<scalar_t> quad_0_point_two = {quad_0[(i + 1) % 4][0], quad_0[(i + 1) % 4][1]};
-                Point<scalar_t> quad_1_point_one = {quad_1[j][0], quad_1[j][1]};
-                Point<scalar_t> quad_1_point_two = {quad_1[(j + 1) % 4][0], quad_1[(j + 1) % 4][1]};
+                Point<scalar_t> quad_0_point_one = {quad_0[i * 2], quad_0[i * 2 + 1]};
+                Point<scalar_t> quad_0_point_two = {quad_0[((i + 1) % 4) * 2], quad_0[((i + 1) % 4) * 2 + 1]};
+                Point<scalar_t> quad_1_point_one = {quad_1[j * 2], quad_1[j * 2 + 1]};
+                Point<scalar_t> quad_1_point_two = {quad_1[((j + 1) % 4) * 2], quad_1[((j + 1) % 4) * 2 + 1]};
                 if (doIntersect(quad_0_point_one, quad_0_point_two, quad_1_point_one, quad_1_point_two, intersection)) {
                     // Check if this intersection is already in the intersections array
                     bool alreadyExists = false;

@@ -10,19 +10,15 @@ __device__ inline scalar_t computeAngle(const Point<scalar_t>& centroid, const P
 }
 
 template <typename scalar_t>
-__device__ inline Point<scalar_t> findCentroid(const at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> points) {
+__device__ inline Point<scalar_t> findCentroid(scalar_t *points) {
     Point<scalar_t> centroid = {0.0, 0.0};
-    int valid_point_counter = 0;
     #pragma unroll
-    for (int i = 0; i < points.size(0); i++) {
-        if (!isinf(points[i][0]) && !isinf(points[i][1])){
-            centroid.x += points[i][0];
-            centroid.y += points[i][1];
-            valid_point_counter++;
-        }
+    for (int i = 0; i < 4; i++) {
+        centroid.x += points[i * 2];
+        centroid.y += points[i * 2 + 1];
     }
-    centroid.x /= valid_point_counter;
-    centroid.y /= valid_point_counter;
+    centroid.x /= 4.0;
+    centroid.y /= 4.0;
     return centroid;
 }
 
@@ -44,13 +40,13 @@ __device__ inline Point<scalar_t> findCentroid(scalar_t points[MAX_ALL_POINTS][2
 }
 
 template<typename scalar_t>
-__device__ inline void swapPoints(at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> points, int i){
-    scalar_t tempX = points[i][0];
-    scalar_t tempY = points[i][1];
-    points[i][0] = points[i + 1][0];
-    points[i][1] = points[i + 1][1];
-    points[i + 1][0] = tempX;
-    points[i + 1][1] = tempY;
+__device__ inline void swapPoints(scalar_t *points, int i){
+    scalar_t tempX = points[i * 2];
+    scalar_t tempY = points[i * 2 + 1];
+    points[i * 2] = points[(i + 1) * 2];
+    points[i * 2 + 1] = points[(i + 1) * 2 + 1];
+    points[(i + 1) * 2] = tempX;
+    points[(i + 1) * 2 + 1] = tempY;
 }
 
 template<typename scalar_t>
@@ -82,20 +78,17 @@ __device__ inline bool comparePoints(const Point<scalar_t>& p1, const Point<scal
 
 namespace sortPoints{
     template <typename scalar_t>
-    __device__ inline void sortPointsClockwise(at::TensorAccessor<scalar_t, 2, at::RestrictPtrTraits, int> points) {
+    __device__ inline void sortQuadPointsClockwise(scalar_t *points) {
         // Calculate the centroid of the points
         Point<scalar_t> centroid = findCentroid(points);
         
         bool swapped = true; // Initialize swapped to true to enter the loop
-        int n = points.size(0);
+        int n = 4;
         while (swapped) {
             swapped = false; // Set swapped to false at the beginning of the loop
             for (int i = 0; i < n - 1; i++) {
-                // Skip points where both x and y are inf
-                if (isinf(points[i][0]) && isinf(points[i][1])) continue;
-                if (isinf(points[i + 1][0]) && isinf(points[i + 1][1])) continue;
-                Point<scalar_t> p1 = {points[i][0], points[i][1]};
-                Point<scalar_t> p2 = {points[i + 1][0], points[i + 1][1]};
+                Point<scalar_t> p1 = {points[i * 2], points[i * 2 + 1]};
+                Point<scalar_t> p2 = {points[(i + 1) * 2], points[(i + 1) * 2 + 1]};
 
                 // Using the comparison function to determine if the points are out of order
                 if (!comparePoints(p1, p2, centroid)) {
