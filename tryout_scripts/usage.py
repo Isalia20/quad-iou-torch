@@ -5,7 +5,6 @@ import quad_iou
 a = torch.rand((200, 4, 2)).cuda()
 b = torch.rand((300, 4, 2)).cuda()
 iou_matrix = quad_iou.calculateIoU(a, b) # returns tensor of shape [200, 300]
- 
 # 1x1 case
 a = torch.tensor([0.0, 0, 300, 0, 300, 300, 0, 300]).cuda()
 b = torch.tensor([0.0, 0, 150, 0, 150, 150, 0, 150]).cuda()
