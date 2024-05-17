@@ -71,7 +71,7 @@ __device__ inline scalar_t unionArea(int quad_0_idx,
 template <typename scalar_t>
 __device__ inline scalar_t calculateIoU(
     const scalar_t *quad_0,
-    const scalar_t *quad_1,
+    const scalar_t quad_1[8],
     int quad_0_idx,
     int quad_1_idx,
     int quad_0_size,
@@ -94,13 +94,22 @@ __global__ void calculateIoUKernel(
     ) {
     int idx1 = blockIdx.x * blockDim.x + threadIdx.x;
     int idx2 = blockIdx.y * blockDim.y + threadIdx.y;
+    
+    __shared__ scalar_t quad_1_shared[8];
 
     if ((idx1 < quad_0_size) && (idx2 < quad_1_size)) {
-        // todo used shared memory here
+        // copy quad_1 in a shared memory
+        // so all threads referring to quad_0 can access
+        // it without needing to go to global memory
+        if (threadIdx.x == 0){
+            for (int i = 0; i < 8; i++) {
+                quad_1_shared[i] = quad_1[idx2 * 8 + i];
+            }
+        }
+        __syncthreads();
         scalar_t *quad_first = &quad_0[idx1 * 4 * 2];
-        scalar_t *quad_second = &quad_1[idx2 * 4 * 2];
         iou_matrix[idx1 * quad_1_size + idx2] = calculateIoU(quad_first,
-                                                             quad_second,
+                                                             quad_1_shared,
                                                              idx1,
                                                              idx2,
                                                              quad_0_size,
@@ -140,7 +149,7 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) 
         scalar_t *polygonAreas_d;
         cudaMalloc((void**)&polygonAreas_d, (quad_0.size(0) + quad_1.size(0)) * sizeof(scalar_t));
 
-        dim3 blockSize(16, 16);
+        dim3 blockSize(32, 32);
         dim3 gridSize((quad_0.size(0) + blockSize.x - 1) / blockSize.x,
                         (quad_1.size(0) + blockSize.y - 1) / blockSize.y);
         dim3 blockSizeQuad(128, 1, 1);
