@@ -149,7 +149,7 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) 
         scalar_t *polygonAreas_d;
         cudaMalloc((void**)&polygonAreas_d, (quad_0.size(0) + quad_1.size(0)) * sizeof(scalar_t));
 
-        dim3 blockSize(32, 32);
+        dim3 blockSize(16, 32);
         dim3 gridSize((quad_0.size(0) + blockSize.x - 1) / blockSize.x,
                         (quad_1.size(0) + blockSize.y - 1) / blockSize.y);
         dim3 blockSizeQuad(128, 1, 1);
