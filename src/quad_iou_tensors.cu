@@ -72,7 +72,7 @@ __device__ inline scalar_t unionArea(int quad_0_idx,
 
 template <typename scalar_t>
 __device__ inline scalar_t calculateIoU(
-    const scalar_t *quad_0,
+    const scalar_t quad_0[8],
     const scalar_t quad_1[8],
     int quad_0_idx,
     int quad_1_idx,
@@ -99,18 +99,20 @@ __global__ void calculateIoUKernel(
     int idx1 = blockIdx.x * blockDim.x + threadIdx.x;
     int idx2 = blockIdx.y * blockDim.y + threadIdx.y;
     
-    __shared__ scalar_t quad_1_shared[THREAD_COUNT_Y][8]; // Number of threads x 8
-    // copy quad_1 in a shared memory
-    // so all threads referring to quad_0 can access
-    // it without needing to go to global memory
+    // load both quads in a shared memory
+    // Number of threads x 8
+    __shared__ scalar_t quad_0_shared[THREAD_COUNT_X][8];
+    __shared__ scalar_t quad_1_shared[THREAD_COUNT_Y][8];
     if (tx < 8){
         quad_1_shared[ty][tx] = quad_1[idx2 * 8 + tx];
+    }
+    if (ty < 8){
+        quad_0_shared[tx][ty] = quad_0[idx1 * 8 + ty];
     }
     __syncthreads();
 
     if ((idx1 < quad_0_size) && (idx2 < quad_1_size)) {
-        scalar_t *quad_first = &quad_0[idx1 * 8];
-        iou_matrix[idx1 * quad_1_size + idx2] = calculateIoU(quad_first,
+        iou_matrix[idx1 * quad_1_size + idx2] = calculateIoU(quad_0_shared[tx],
                                                              quad_1_shared[ty],
                                                              idx1,
                                                              idx2,
