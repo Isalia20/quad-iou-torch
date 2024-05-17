@@ -14,6 +14,7 @@
  * limitations under the License.
  ******************************************************************************/
 
+#define QUAD_ELEMENTS 8
 #define MAX_INTERSECTION_POINTS 8
 #define MAX_INSIDE_POINTS 8
 #define MAX_ALL_POINTS 16
@@ -72,8 +73,8 @@ __device__ inline scalar_t unionArea(int quad_0_idx,
 
 template <typename scalar_t>
 __device__ inline scalar_t calculateIoU(
-    const scalar_t quad_0[8],
-    const scalar_t quad_1[8],
+    const scalar_t quad_0[QUAD_ELEMENTS],
+    const scalar_t quad_1[QUAD_ELEMENTS],
     int quad_0_idx,
     int quad_1_idx,
     int quad_0_size,
@@ -94,20 +95,19 @@ __global__ void calculateIoUKernel(
     int quad_0_size,
     int quad_1_size
     ) {
-    int tx = threadIdx.x;
-    int ty = threadIdx.y;
-    int idx1 = blockIdx.x * blockDim.x + threadIdx.x;
-    int idx2 = blockIdx.y * blockDim.y + threadIdx.y;
+    const int tx = threadIdx.x;
+    const int ty = threadIdx.y;
+    const int idx1 = blockIdx.x * blockDim.x + threadIdx.x;
+    const int idx2 = blockIdx.y * blockDim.y + threadIdx.y;
     
-    // load both quads in a shared memory
-    // Number of threads x 8
-    __shared__ scalar_t quad_0_shared[THREAD_COUNT_X][8];
-    __shared__ scalar_t quad_1_shared[THREAD_COUNT_Y][8];
-    if (tx < 8){
-        quad_1_shared[ty][tx] = quad_1[idx2 * 8 + tx];
+    // Shared memory for storing quads
+    __shared__ scalar_t quad_0_shared[THREAD_COUNT_X][QUAD_ELEMENTS];
+    __shared__ scalar_t quad_1_shared[THREAD_COUNT_Y][QUAD_ELEMENTS];
+    if (tx < QUAD_ELEMENTS && idx2 < quad_1_size) {
+        quad_1_shared[ty][tx] = quad_1[idx2 * QUAD_ELEMENTS + tx];
     }
-    if (ty < 8){
-        quad_0_shared[tx][ty] = quad_0[idx1 * 8 + ty];
+    if (ty < QUAD_ELEMENTS && idx1 < quad_0_size) {
+        quad_0_shared[tx][ty] = quad_0[idx1 * QUAD_ELEMENTS + ty];
     }
     __syncthreads();
 
