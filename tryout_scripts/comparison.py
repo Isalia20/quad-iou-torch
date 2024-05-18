@@ -44,7 +44,7 @@ def main():
     quads_1_torch = torch.tensor(quads_1).cuda()
     quads_2_torch = torch.tensor(quads_2).cuda()
     t1 = time.time()
-    iou = quad_iou.calculateIoU(quads_1_torch, quads_2_torch, True)
+    iou = quad_iou.calculate_iou(quads_1_torch, quads_2_torch, True)
     t2 = time.time()
     time_quad_iou = t2 - t1
     iou_matrix = np.zeros((len(quads_1), len(quads_2)))

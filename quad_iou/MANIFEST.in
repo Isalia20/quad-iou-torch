@@ -1,0 +1,4 @@
+include README.md
+include LICENSE
+include *.py
+recursive-include src *.cu  *.cpp *.py *.cuh
