@@ -46,6 +46,7 @@ iou = quad_iou.calculateIoU(a, b, sort_input_quads=True)
 
 ## TODO
 - [ ] Add more tests in `tests/test.py` for dealing with MxN quadrilaterals, now tests are only for 1->1 quadrilaterals
+- [ ] Add more tests in `tests/test.py` for dealing with 1x1 quadrilateral without sorting `sort_input_quads=False`
 - [ ] Make package available on pypi
 
 
