@@ -1,4 +1,5 @@
-build/*
+quad_iou/dist/*
+quad_iou/src/quad_iou.egg-info/*
 dist/*
 quad_iou.egg-info/*
 .vscode/*

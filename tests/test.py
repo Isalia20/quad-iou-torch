@@ -174,7 +174,7 @@ def test_calculate_iou(dtype, points1, points2, expected_iou):
     tensor_2 = create_quadrilateral_tensor(points2, dtype)
     expected_iou_tensor = torch.tensor([expected_iou[DTYPE_IDX_MAP[dtype]]], dtype=dtype).cuda()
 
-    calculated_iou = quad_iou.calculateIoU(tensor_1, tensor_2, True).to(dtype).round(decimals=4)
+    calculated_iou = quad_iou.calculate_iou(tensor_1, tensor_2, True).to(dtype).round(decimals=4)
     assert torch.allclose(calculated_iou, expected_iou_tensor, atol=1e-6), f"Calculated IoU: {calculated_iou}, Expected IoU: {expected_iou_tensor}"
 
 if __name__ == "__main__":
