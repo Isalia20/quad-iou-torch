@@ -18,8 +18,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     "Examples:\n"
     "    >>> a = torch.rand((200, 4, 2)).cuda()\n"
     "    >>> b = torch.rand((300, 4, 2)).cuda()\n"
-    "    >>> iou_matrix = quad_iou.calculateIoU(a, b) # returns tensor of shape [200, 300]\n",
-    py::arg("quad1"), py::arg("quad2"), py::arg("sort_input_quads"));
+    "    >>> iou_matrix = quad_iou.calculateIoU(a, b, True) # returns tensor of shape [200, 300]\n",
+    py::arg("quad0"), py::arg("quad1"), py::arg("sort_input_quads"));
 };
 
 #endif
