@@ -128,23 +128,27 @@ __global__ void polygonAreaCalculationKernel(
     scalar_t *quad_0,
     scalar_t *quad_1,
     int quad_0_size,
-    int quad_1_size
+    int quad_1_size,
+    bool sort_input_quads
 ) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (idx < quad_0_size) {
-        // Sort the points first since we are using gaussian formula
         scalar_t *quadrilateral = &quad_0[idx * 4 * 2];
-        sortPoints::sortQuadPointsClockwise(quadrilateral);
+        if (sort_input_quads){
+            sortPoints::sortQuadPointsClockwise(quadrilateral);    
+        }
         polygonAreas[idx] = polygonArea::calcQuadrilateralArea(quadrilateral);
     } else if (idx < (quad_0_size + quad_1_size)) {
         scalar_t *quadrilateral = &quad_1[(idx - quad_0_size) * 4 * 2];
-        sortPoints::sortQuadPointsClockwise(quadrilateral);
+        if (sort_input_quads){
+            sortPoints::sortQuadPointsClockwise(quadrilateral);    
+        }
         polygonAreas[idx] = polygonArea::calcQuadrilateralArea(quadrilateral);
     }
 }
 
-torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) {
+torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1, bool sort_input_quads) {
     checks::check_tensor_validity(quad_0, quad_1);
     // Create an output tensor
     torch::Tensor iou_matrix = torch::empty({quad_0.size(0), quad_1.size(0)}, quad_0.options());
@@ -155,13 +159,25 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) 
 
         dim3 blockSizeQuad(128, 1, 1);
         dim3 gridSizeQuad((quad_0.size(0) + quad_1.size(0) + blockSizeQuad.x - 1) / blockSizeQuad.x, 1, 1);
-
-        polygonAreaCalculationKernel<scalar_t><<<gridSizeQuad, blockSizeQuad>>>(
-            polygonAreas_d,
-            quad_0.data_ptr<scalar_t>(),
-            quad_1.data_ptr<scalar_t>(),
-            quad_0.size(0),
-            quad_1.size(0));
+        if (sort_input_quads){
+            torch::Tensor quad_0_copy = quad_0.clone();
+            torch::Tensor quad_1_copy = quad_1.clone();
+            polygonAreaCalculationKernel<scalar_t><<<gridSizeQuad, blockSizeQuad>>>(
+                polygonAreas_d,
+                quad_0_copy.data_ptr<scalar_t>(),
+                quad_1_copy.data_ptr<scalar_t>(),
+                quad_0.size(0),
+                quad_1.size(0),
+                sort_input_quads);
+        } else {
+            polygonAreaCalculationKernel<scalar_t><<<gridSizeQuad, blockSizeQuad>>>(
+                polygonAreas_d,
+                quad_0.data_ptr<scalar_t>(),
+                quad_1.data_ptr<scalar_t>(),
+                quad_0.size(0),
+                quad_1.size(0),
+                sort_input_quads);
+        }
         cudaDeviceSynchronize();
 
         dim3 blockSize(THREAD_COUNT_X, THREAD_COUNT_Y);
