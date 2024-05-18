@@ -5,22 +5,10 @@ Cuda kernel for calculating IoU for quadrilaterals. It can calculate IoU either 
 
 ## Installation
 
-**NOTE:** Installation and usage of this module requires NVIDIA GPU, gcc, nvcc and torch installed. Tested with following setups:
+**NOTE:** Installation and usage of this module requires NVIDIA GPU, gcc, nvcc and torch installed.
 
-|OS| GPU Card | gcc version| nvcc version | torch_version |
-|--|--|--|--|--|
-| Ubuntu 22.04 | RTX 4060 Ti | 11.4 | 12.1 | Stable 2.1.2 CUDA 12.1 |
-| Debian 11 | L4 | 10.2.1 | 12.1 | Stable 2.1.2 CUDA 12.2 |
-| Windows 10 | RTX 4060 Ti | Microsoft Visual C++(Part of Visual Studio) | 12.1 | Stable 2.1.2 CUDA 12.1 |
-
-
-
-1. Clone the repo.
-2. Go into the folder.
-3. Install latest torch with the cuda version you have. Check with `nvcc --version`, upgrade if necessary.
-4. Run `python setup.py install`
-5. Run `python tryout_scripts/usage.py` to test it out. Expected output is `0.25`
-6. To run `comparison.py` you should install shapely as well with `pip install shapely`
+1. Run `pip install quad_iou`
+2. To confirm installation, run `python tryout_scripts/usage.py` to test it out. Expected output is `0.25`
 
 ## Example usage:
 ```
