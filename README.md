@@ -42,6 +42,10 @@ b = b.reshape(-1, 4, 2)
 iou = quad_iou.calculateIoU(a, b)
 ```
 
+## TODO:
+- [ ] Add more tests in `tests/test.py` for dealing with MxN quadrilaterals, now tests are only for 1->1 quadrilaterals
+
+
 ## Comparison with Shapely library
 
 While CPUs and GPUs are not to be compared for speed, we provide a script to demonstrate the potential speedup when using a GPU. To compare the execution time of calculating the IoU for quadrilaterals using the `Shapely` library versus our GPU-accelerated implementation, run `python tryout_scripts/comparison.py`
