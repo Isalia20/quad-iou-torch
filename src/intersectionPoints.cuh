@@ -1,4 +1,5 @@
 #define MAX_INTERSECTION_POINTS 8
+#define MAX_ALL_POINTS 16
 #define EPSILON 1e-6
 #include <torch/extension.h>
 #include "utils.cuh"
@@ -51,9 +52,9 @@ __device__ inline bool doIntersect(const Point<scalar_t>& p1, const Point<scalar
 
 namespace intersectionPoints{    
     template <typename scalar_t>
-    __device__ inline void findIntersectionPoints(const scalar_t *quad_0, 
+    __device__ inline int findIntersectionPoints(const scalar_t *quad_0, 
                                                   const scalar_t *quad_1, 
-                                                  scalar_t intersections[MAX_INTERSECTION_POINTS][2]) {
+                                                  scalar_t intersections[MAX_ALL_POINTS][2]) {
         int numIntersections = 0;
         #pragma unroll
         for (int i = 0; i < 4; ++i) {
@@ -81,5 +82,6 @@ namespace intersectionPoints{
                 }
             }
         }
+        return numIntersections;
     }
 }

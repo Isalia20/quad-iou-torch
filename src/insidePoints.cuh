@@ -1,4 +1,4 @@
-#define MAX_INSIDE_POINTS 8
+#define MAX_ALL_POINTS 16
 #include <torch/extension.h>
 #include "utils.cuh"
 
@@ -46,13 +46,14 @@ namespace insidePoints{
     template <typename scalar_t>
     __device__ inline void findPointsInside(const scalar_t *quad_0, 
                                             const scalar_t *quad_1, 
-                                            scalar_t inside_points[MAX_INSIDE_POINTS][2]) {
-        int numInsidePoints = 0;
+                                            scalar_t inside_points[MAX_ALL_POINTS][2],
+                                            int numIntersections) {
+        int numInsidePoints = numIntersections;
         #pragma unroll
         for (int i = 0; i < 4; i++) {
             Point<scalar_t> quad_0_point = {quad_0[i * 2], quad_0[i * 2 + 1]};
             if (isPointInsideQuadrilateral(quad_0_point, quad_1) == 1) {
-                if (numInsidePoints < MAX_INSIDE_POINTS) {
+                if (numInsidePoints < MAX_ALL_POINTS) {
                     inside_points[numInsidePoints][0] = quad_0[i * 2];
                     inside_points[numInsidePoints][1] = quad_0[i * 2 + 1];
                     numInsidePoints++;
@@ -60,7 +61,7 @@ namespace insidePoints{
             }
             Point<scalar_t> quad_1_point = {quad_1[i * 2], quad_1[i * 2 + 1]};
             if (isPointInsideQuadrilateral(quad_1_point, quad_0) == 1) {
-                if (numInsidePoints < MAX_INSIDE_POINTS) {
+                if (numInsidePoints < MAX_ALL_POINTS) {
                     inside_points[numInsidePoints][0] = quad_1[i * 2];
                     inside_points[numInsidePoints][1] = quad_1[i * 2 + 1];
                     numInsidePoints++;
