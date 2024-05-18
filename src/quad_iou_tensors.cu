@@ -149,7 +149,7 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) 
     // Create an output tensor
     torch::Tensor iou_matrix = torch::empty({quad_0.size(0), quad_1.size(0)}, quad_0.options());
 
-    AT_DISPATCH_ALL_TYPES_AND_HALF(quad_0.scalar_type(), "calculateIoUCudaTorch", ([&] {
+    AT_DISPATCH_FLOATING_TYPES_AND_HALF(quad_0.scalar_type(), "calculateIoUCudaTorch", ([&] {
         scalar_t *polygonAreas_d;
         cudaMalloc((void**)&polygonAreas_d, (quad_0.size(0) + quad_1.size(0)) * sizeof(scalar_t));
 
