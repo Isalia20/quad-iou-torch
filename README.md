@@ -31,7 +31,9 @@ import quad_iou
 a = torch.rand((200, 4, 2)).cuda()
 b = torch.rand((300, 4, 2)).cuda()
 
-iou_matrix = quad_iou.calculateIoU(a, b) # returns tensor of shape [200, 300]
+# sort_input_quads indicate whether kernel should sort the quadrilateral corners
+# clockwise before calculating iou
+iou_matrix = quad_iou.calculateIoU(a, b, sort_input_quads=True) # returns tensor of shape [200, 300]
 
 # 1x1 case
 a = torch.tensor([0.0, 0, 300, 0, 300, 300, 0, 300]).cuda()
@@ -39,11 +41,12 @@ b = torch.tensor([0.0, 0, 150, 0, 150, 150, 0, 150]).cuda()
 # Module expects tensor of shape [N, 4, 2], so we reshape the tensors
 a = a.reshape(-1, 4, 2)
 b = b.reshape(-1, 4, 2)
-iou = quad_iou.calculateIoU(a, b)
+iou = quad_iou.calculateIoU(a, b, sort_input_quads=True)
 ```
 
 ## TODO
 - [ ] Add more tests in `tests/test.py` for dealing with MxN quadrilaterals, now tests are only for 1->1 quadrilaterals
+- [ ] Make package available on pypi
 
 
 ## Comparison with Shapely library

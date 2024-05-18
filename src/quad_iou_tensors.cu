@@ -128,52 +128,91 @@ __global__ void polygonAreaCalculationKernel(
     scalar_t *quad_0,
     scalar_t *quad_1,
     int quad_0_size,
-    int quad_1_size
+    int quad_1_size,
+    bool sort_input_quads
 ) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (idx < quad_0_size) {
-        // Sort the points first since we are using gaussian formula
         scalar_t *quadrilateral = &quad_0[idx * 4 * 2];
-        sortPoints::sortQuadPointsClockwise(quadrilateral);
+        if (sort_input_quads){
+            sortPoints::sortQuadPointsClockwise(quadrilateral);    
+        }
         polygonAreas[idx] = polygonArea::calcQuadrilateralArea(quadrilateral);
     } else if (idx < (quad_0_size + quad_1_size)) {
         scalar_t *quadrilateral = &quad_1[(idx - quad_0_size) * 4 * 2];
-        sortPoints::sortQuadPointsClockwise(quadrilateral);
+        if (sort_input_quads){
+            sortPoints::sortQuadPointsClockwise(quadrilateral);    
+        }
         polygonAreas[idx] = polygonArea::calcQuadrilateralArea(quadrilateral);
     }
 }
 
-torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1) {
+torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1, bool sort_input_quads) {
     checks::check_tensor_validity(quad_0, quad_1);
     // Create an output tensor
     torch::Tensor iou_matrix = torch::empty({quad_0.size(0), quad_1.size(0)}, quad_0.options());
 
-    AT_DISPATCH_FLOATING_TYPES_AND_HALF(quad_0.scalar_type(), "calculateIoUCudaTorch", ([&] {
-        scalar_t *polygonAreas_d;
+    AT_DISPATCH_FLOATING_TYPES_AND_HALF(quad_0.scalar_type(), "calculateIoUCudaTorch", ([&] {        
+        // Allocate device memory for polygon areas
+        scalar_t* polygonAreas_d;
         cudaMalloc((void**)&polygonAreas_d, (quad_0.size(0) + quad_1.size(0)) * sizeof(scalar_t));
 
+        // Define block and grid sizes
         dim3 blockSizeQuad(128, 1, 1);
         dim3 gridSizeQuad((quad_0.size(0) + quad_1.size(0) + blockSizeQuad.x - 1) / blockSizeQuad.x, 1, 1);
-
-        polygonAreaCalculationKernel<scalar_t><<<gridSizeQuad, blockSizeQuad>>>(
-            polygonAreas_d,
-            quad_0.data_ptr<scalar_t>(),
-            quad_1.data_ptr<scalar_t>(),
-            quad_0.size(0),
-            quad_1.size(0));
-        cudaDeviceSynchronize();
-
         dim3 blockSize(THREAD_COUNT_X, THREAD_COUNT_Y);
-        dim3 gridSize((quad_0.size(0) + blockSize.x - 1) / blockSize.x,
-                        (quad_1.size(0) + blockSize.y - 1) / blockSize.y);
-        calculateIoUKernel<scalar_t><<<gridSize, blockSize>>>(
-            quad_0.data_ptr<scalar_t>(),
-            quad_1.data_ptr<scalar_t>(),
-            iou_matrix.data_ptr<scalar_t>(),
-            polygonAreas_d,
-            quad_0.size(0),
-            quad_1.size(0));
+        dim3 gridSize((quad_0.size(0) + blockSize.x - 1) / blockSize.x, 
+                      (quad_1.size(0) + blockSize.y - 1) / blockSize.y);
+
+        // If sorting of input quads is needed
+        if (sort_input_quads) {
+            torch::Tensor quad_0_copy = quad_0.clone();
+            torch::Tensor quad_1_copy = quad_1.clone();
+            // Calculate polygon areas for sorted quads
+            polygonAreaCalculationKernel<scalar_t><<<gridSizeQuad, blockSizeQuad>>>(
+                polygonAreas_d,
+                quad_0_copy.data_ptr<scalar_t>(),
+                quad_1_copy.data_ptr<scalar_t>(),
+                quad_0.size(0),
+                quad_1.size(0),
+                sort_input_quads
+            );
+            cudaDeviceSynchronize();
+
+            // Calculate IoU for sorted quads
+            calculateIoUKernel<scalar_t><<<gridSize, blockSize>>>(
+                quad_0_copy.data_ptr<scalar_t>(),
+                quad_1_copy.data_ptr<scalar_t>(),
+                iou_matrix.data_ptr<scalar_t>(),
+                polygonAreas_d,
+                quad_0.size(0),
+                quad_1.size(0)
+            );
+        } else {
+            // Calculate polygon areas for unsorted quads
+            polygonAreaCalculationKernel<scalar_t><<<gridSizeQuad, blockSizeQuad>>>(
+                polygonAreas_d,
+                quad_0.data_ptr<scalar_t>(),
+                quad_1.data_ptr<scalar_t>(),
+                quad_0.size(0),
+                quad_1.size(0),
+                sort_input_quads
+            );
+            cudaDeviceSynchronize();
+
+            // Calculate IoU for unsorted quads
+            calculateIoUKernel<scalar_t><<<gridSize, blockSize>>>(
+                quad_0.data_ptr<scalar_t>(),
+                quad_1.data_ptr<scalar_t>(),
+                iou_matrix.data_ptr<scalar_t>(),
+                polygonAreas_d,
+                quad_0.size(0),
+                quad_1.size(0)
+            );
+        }
+
+        // Synchronize and free device memory
         cudaDeviceSynchronize();
         cudaFree(polygonAreas_d);
     }));
