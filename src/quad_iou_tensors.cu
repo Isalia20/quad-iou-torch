@@ -15,8 +15,6 @@
  ******************************************************************************/
 
 #define QUAD_ELEMENTS 8
-#define MAX_INTERSECTION_POINTS 8
-#define MAX_INSIDE_POINTS 8
 #define MAX_ALL_POINTS 16
 #define THREAD_COUNT_X 16
 #define THREAD_COUNT_Y 16
@@ -41,20 +39,15 @@ __device__ inline scalar_t intersectionArea(
     // we can skip below calculation altogether
     if (!simpleIntersectCheck::checkSimpleIntersection(quad_0, quad_1)) return 0.0;
 
-    scalar_t intersection_points[MAX_INTERSECTION_POINTS][2];
-    scalar_t inside_points[MAX_INSIDE_POINTS][2];
     scalar_t all_points[MAX_ALL_POINTS][2];
-    allPoints::fillPointsWithInfinity(intersection_points,
-                                      inside_points,
-                                      all_points);
+    allPoints::fillPointsWithInfinity(all_points);
 
-    intersectionPoints::findIntersectionPoints(quad_0,
-                                               quad_1,
-                                               intersection_points);
-    insidePoints::findPointsInside(quad_0, quad_1, inside_points);
-    allPoints::copyIntersectionInsidePoints(intersection_points,
-                                            inside_points,
-                                            all_points);
+    // saving numIntersections so inside_points can be written
+    // after those points
+    int numIntersections = intersectionPoints::findIntersectionPoints(quad_0,
+                                                                      quad_1,
+                                                                      all_points);
+    insidePoints::findPointsInside(quad_0, quad_1, all_points, numIntersections);
     sortPoints::sortPointsClockwise(all_points);
     scalar_t intersectArea = polygonArea::calcPolygonArea(all_points);
     return intersectArea;
