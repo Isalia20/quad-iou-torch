@@ -6,7 +6,7 @@ with open('README.md', 'r', encoding='utf-8') as fh:
 
 setup(
     name="quad_iou",
-    version="0.16.0",
+    version="0.0.0",
     author="Irakli Salia",
     author_email="irakli.salia854@gmail.com",
     description="A CUDA extension for Quad IoU binding to PyTorch.",
