@@ -42,7 +42,7 @@ b = b.reshape(-1, 4, 2)
 iou = quad_iou.calculateIoU(a, b)
 ```
 
-## TODO:
+## TODO
 - [ ] Add more tests in `tests/test.py` for dealing with MxN quadrilaterals, now tests are only for 1->1 quadrilaterals
 
 
