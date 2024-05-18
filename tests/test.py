@@ -126,13 +126,13 @@ test_data = [
     (
         [0, 0, 2, 0, 2.5, 3, 0.5, 2.5],
         [0.2, 1, 0.8, 0.5, 1.7, 2.4, 1.4, 3.3],
-        [0.2769, 0.1323, 0.2769] # surprising difference on float32, TODO investigate this
+        [0.2769, 0.2769, 0.2769]
     ),
     # Test case 20: Two quadrilaterals with 1 intersection points
     (
         [0, 0, 0.5, 2.5, 2.5, 3, 2, 0],
         [0.2, 1, 1.4, 1.9, 1.7, 1.3, 0.8, 0.5],
-        [0.1787, 0.0656, 0.1786] #TODO surprising difference on float32 here as well, investigate this
+        [0.1787, 0.1786, 0.1786]
     ),
     # Test case 21: No intersection inside of the quad
     (

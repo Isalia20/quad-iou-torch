@@ -1,16 +1,17 @@
 #define MAX_INTERSECTION_POINTS 8
+#define EPSILON 1e-6
 #include <torch/extension.h>
 #include "utils.cuh"
 
 template <typename scalar_t>
 __device__ inline bool arePointsEqual(const Point<scalar_t>& p1, const Point<scalar_t>& p2) {
-    return fabsf(p1.x - p2.x) < 1e-6 && fabsf(p1.y - p2.y) < 1e-6;
+    return fabsf(p1.x - p2.x) < EPSILON && fabsf(p1.y - p2.y) < EPSILON;
 }
 
 template <typename scalar_t>
 __device__ inline int orientation(const Point<scalar_t>& p, const Point<scalar_t>& q, const Point<scalar_t>& r) {
     scalar_t val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
-    if (fabsf(val) < 1e-6) return 0;  // colinear
+    if (fabsf(val) < EPSILON) return 0;  // colinear
     return (val > 0) ? 1 : 2;  // clockwise
 }
 
@@ -36,7 +37,7 @@ __device__ inline bool doIntersect(const Point<scalar_t>& p1, const Point<scalar
         scalar_t c2 = a2 * (p2.x) + b2 * (p2.y);
 
         scalar_t determinant = a1 * b2 - a2 * b1;
-        if (fabsf(determinant) < 1e-6) {
+        if (fabsf(determinant) < EPSILON) {
             return false; // The lines are parallel
         } else {
             intersection.x = (b2 * c1 - b1 * c2) / determinant;
