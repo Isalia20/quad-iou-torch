@@ -1,23 +1,18 @@
 #define MAX_INTERSECTION_POINTS 8
+#define EPSILON 1e-6
 #include <torch/extension.h>
 #include "utils.cuh"
 
 template <typename scalar_t>
 __device__ inline bool arePointsEqual(const Point<scalar_t>& p1, const Point<scalar_t>& p2) {
-    return fabsf(p1.x - p2.x) < 1e-10 && fabsf(p1.y - p2.y) < 1e-10;
+    return fabsf(p1.x - p2.x) < EPSILON && fabsf(p1.y - p2.y) < EPSILON;
 }
 
 template <typename scalar_t>
 __device__ inline int orientation(const Point<scalar_t>& p, const Point<scalar_t>& q, const Point<scalar_t>& r) {
     scalar_t val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
-    if (fabsf(val) < 1e-10) return 0;  // colinear
+    if (fabsf(val) < EPSILON) return 0;  // colinear
     return (val > 0) ? 1 : 2;  // clockwise
-}
-
-template <typename scalar_t>
-__device__ inline bool onSegment(const Point<scalar_t>& p, const Point<scalar_t>& q, const Point<scalar_t>& r) {
-    return q.x <= max(p.x, r.x) && q.x >= min(p.x, r.x) &&
-           q.y <= max(p.y, r.y) && q.y >= min(p.y, r.y);
 }
 
 template <typename scalar_t>
@@ -42,7 +37,7 @@ __device__ inline bool doIntersect(const Point<scalar_t>& p1, const Point<scalar
         scalar_t c2 = a2 * (p2.x) + b2 * (p2.y);
 
         scalar_t determinant = a1 * b2 - a2 * b1;
-        if (fabsf(determinant) < 1e-10) {
+        if (fabsf(determinant) < EPSILON) {
             return false; // The lines are parallel
         } else {
             intersection.x = (b2 * c1 - b1 * c2) / determinant;
@@ -50,13 +45,6 @@ __device__ inline bool doIntersect(const Point<scalar_t>& p1, const Point<scalar
             return true;
         }
     }
-
-    // Special Cases
-    // checks colinearity and lying on segment
-    if (o1 == 0 && onSegment(p1, p2, q1)) { intersection = p2; return true; }
-    if (o2 == 0 && onSegment(p1, q2, q1)) { intersection = q2; return true; }
-    if (o3 == 0 && onSegment(p2, p1, q2)) { intersection = p1; return true; }
-    if (o4 == 0 && onSegment(p2, q1, q2)) { intersection = q1; return true; }
     
     return false; // Doesn't fall in any of the above cases
 }
