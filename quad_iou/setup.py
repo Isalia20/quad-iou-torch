@@ -9,7 +9,7 @@ setup(
     version="0.0.0",
     author="Irakli Salia",
     author_email="irakli.salia854@gmail.com",
-    description="A CUDA extension for Quad IoU binding to PyTorch.",
+    description="A CUDA extension for calculating IoU(Intersection over Union) for quadrilaterals(MxN) bound to PyTorch(usable with torch tensors).",
     long_description=long_description,
     long_description_content_type='text/markdown',
     url="https://github.com/Isalia20/quadrilaterals_iou_cuda_kernel",  # Update with your repository URL
