@@ -42,5 +42,5 @@ You can try the package on Google Colab:
 - [x] Make package available on pypi
 - [x] CPU version
 - [ ] MPS version
-- [ ] Look into why Pragma is ignored during compilation
+- [x] Parallelize on CPU(Pragma ignored during compilation)
 
