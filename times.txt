@@ -1,5 +1,0 @@
-0.012819170951843262
-0.012343978881835938 - empty optimization
-0.012445926666259766  0.012296628952026368 - sorting and polygon calculation in a same kernel(slowdown???)
-
-CUDA IOU TOOK ON AVERAGE 0.011852908134460449 seconds
