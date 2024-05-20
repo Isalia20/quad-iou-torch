@@ -22,13 +22,13 @@ if torch.cuda.is_available():
 
 setup(
     name="quad_iou",
-    version="0.0.0",
+    version="0.1.0",
     author="Irakli Salia",
     author_email="irakli.salia854@gmail.com",
-    description="A CUDA extension for calculating IoU(Intersection over Union) for quadrilaterals(MxN) bound to PyTorch(usable with torch tensors).",
+    description="Torch extension for calculating IoU(Intersection over Union) for quadrilaterals(MxN)",
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url="https://github.com/Isalia20/quadrilaterals_iou_cuda_kernel",  # Update with your repository URL
+    url="https://github.com/Isalia20/quad-iou-torch",
     package_dir={'': 'src'},
     packages=find_packages(where="src"),
     ext_modules=ext_modules,

@@ -1,6 +1,7 @@
 import torch
 from torch import Tensor
-from quad_iou_cuda import calculateIoUCuda
+if torch.cuda.is_available():
+    from quad_iou_cuda import calculateIoUCuda
 from quad_iou_cpu import calculateIoUCPU
 
 
