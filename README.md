@@ -10,7 +10,7 @@ Cuda kernel for calculating IoU for quadrilaterals. It can calculate IoU either 
 1. Run `pip install quad_iou`
 2. To confirm installation, run `python tryout_scripts/usage.py` to test it out. Expected output is `0.25`
 
-## Example usage:
+## Example usage
 ```
 import torch
 import quad_iou
@@ -32,7 +32,7 @@ b = b.reshape(-1, 4, 2)
 iou = quad_iou.calculate_iou(a, b, sort_input_quads=True)
 ```
 
-## Example usage with Colab:
+## Example usage with Colab
 You can try the package on Google Colab:
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1Po7oJywlEXEeMJZRqxVNH3jEpRUfA2d_?usp=sharing)
