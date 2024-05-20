@@ -5,6 +5,7 @@ import time
 from shapely.geometry import Polygon
 from quad_iou import calculate_iou
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 
 def generate_random_point():
     return (random.uniform(0, 100), random.uniform(0, 100))
@@ -29,29 +30,6 @@ def is_convex(quadrilateral):
         signs.append(np.sign(cross_product(o, a, b)))
 
     return all(s == signs[0] for s in signs)
-
-def benchmark_iou_calculations(num_pairs):
-    quad1_list = [generate_random_quadrilateral() for _ in range(num_pairs)]
-    quad2_list = [generate_random_quadrilateral() for _ in range(num_pairs)]
-    quad1_tensors = torch.tensor(quad1_list).reshape(-1, 4, 2).double()
-    quad2_tensors = torch.tensor(quad2_list).reshape(-1, 4, 2).double()
-    polys1 = [Polygon(quad) for quad in quad1_list]
-    polys2 = [Polygon(quad) for quad in quad2_list]
-
-    # Measure quad_iou time
-    start_time = time.time()
-    for i in range(num_pairs):
-        
-        (quad1_tensors[i], quad2_tensors[i], True)
-    quad_iou_time = time.time() - start_time
-
-    # Measure shapely_iou time
-    start_time = time.time()
-    for i in range(num_pairs):
-        shapely_iou(polys1[i], polys2[i])
-    shapely_iou_time = time.time() - start_time
-
-    return quad_iou_time, shapely_iou_time
 
 def shapely_iou(polys1, polys2):
     intersection_areas = [[intersected_poly.area for intersected_poly in poly] for poly in [i.intersection(polys2) for i in polys1]]
@@ -83,31 +61,27 @@ def benchmark_iou_calculations(num_pairs):
     return quad_iou_time, t2 - t1
 
 def main():
-    num_pairs_list = [i for i in range(1, 1001, 20)]
+    num_pairs_list = [i for i in range(1, 1002, 100)]
     results = {"num_pairs": [], "quad_iou_time": [], "shapely_iou_time": []}
 
     for num_pairs in num_pairs_list:
         quad_iou_time, shapely_iou_time = benchmark_iou_calculations(num_pairs)
-        results["num_pairs"].append(num_pairs)
+        results["num_pairs"].append(num_pairs ** 2)
         results["quad_iou_time"].append(quad_iou_time)
         results["shapely_iou_time"].append(shapely_iou_time)
         print(f"{num_pairs} pairs -> quad_iou: {quad_iou_time:.6f} s, shapely: {shapely_iou_time:.6f} s")
 
-    # Save results to a file for later plotting
-    with open("benchmark_results.txt", "w") as f:
-        f.write(str(results))
-
-    # Plotting the results
     plt.figure()
     plt.plot(results["num_pairs"], results["quad_iou_time"], label='Quad IOU Time')
     plt.plot(results["num_pairs"], results["shapely_iou_time"], label='Shapely IOU Time')
-    plt.xlabel('Number of Pairs')
+    plt.xlabel('Number of Quadrilateral pairs for iou calculation')
     plt.ylabel('Time (s)')
     plt.title('IOU Calculation Benchmark')
     plt.legend()
     plt.grid(True)
+    formatter = FuncFormatter(lambda x, _: f'{int(x):,}')
+    plt.gca().xaxis.set_major_formatter(formatter)
 
-    # Save the figure
     plt.savefig("iou_benchmark_plot.png")
 
 if __name__ == "__main__":
