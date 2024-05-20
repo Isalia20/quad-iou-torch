@@ -4,15 +4,17 @@
 #ifdef __CUDACC__
 #include <cuda_runtime.h>
 #define HOST_DEVICE __host__ __device__
+#define PRAGMA_UNROLL _Pragma("unroll")
 #else
 #define HOST_DEVICE
+#define PRAGMA_UNROLL
 #endif
 
 template <typename scalar_t>
 HOST_DEVICE inline scalar_t findMaxQuadCoordinate(const scalar_t *box, Coordinate coord){
     // Find the maximum x-coordinate or y-coordinate of the quadrilateral based on the coord value
     scalar_t max_value = box[static_cast<int>(coord)];
-    #pragma unroll
+    PRAGMA_UNROLL
     for (int i = 1; i < 4; ++i) {
         if (box[i * 2 + static_cast<int>(coord)] > max_value) {
             max_value = box[i * 2 + static_cast<int>(coord)];
@@ -29,7 +31,7 @@ HOST_DEVICE inline int isPointInsideQuadrilateral(const Point<scalar_t>& point_t
     if (point_to_check.x > max_x) return -1;
     if (point_to_check.y > max_y) return -1;
 
-    #pragma unroll
+    PRAGMA_UNROLL
     // For each edge of the quadrilateral
     for (int i = 0; i < 4; i++) {
         // Get the current edge's start and end points
@@ -55,7 +57,7 @@ namespace insidePoints{
                                             scalar_t inside_points[MAX_ALL_POINTS][2],
                                             int numIntersections) {
         int numInsidePoints = numIntersections;
-        #pragma unroll
+        PRAGMA_UNROLL
         for (int i = 0; i < 4; i++) {
             Point<scalar_t> quad_0_point = {quad_0[i * 2], quad_0[i * 2 + 1]};
             if (isPointInsideQuadrilateral(quad_0_point, quad_1) == 1) {

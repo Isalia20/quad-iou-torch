@@ -5,8 +5,10 @@
 #ifdef __CUDACC__
 #include <cuda_runtime.h>
 #define HOST_DEVICE __host__ __device__
+#define PRAGMA_UNROLL _Pragma("unroll")
 #else
 #define HOST_DEVICE
+#define PRAGMA_UNROLL
 #endif
 
 template <typename scalar_t>
@@ -18,7 +20,7 @@ HOST_DEVICE inline scalar_t computeAngle(const Point<scalar_t>& centroid, const 
 template <typename scalar_t>
 HOST_DEVICE inline Point<scalar_t> findCentroid(scalar_t *points) {
     Point<scalar_t> centroid = {0.0, 0.0};
-    #pragma unroll
+    PRAGMA_UNROLL
     for (int i = 0; i < 4; i++) {
         centroid.x += points[i * 2];
         centroid.y += points[i * 2 + 1];
@@ -32,7 +34,7 @@ template <typename scalar_t>
 HOST_DEVICE inline Point<scalar_t> findCentroid(scalar_t points[MAX_ALL_POINTS][2]) {
     Point<scalar_t> centroid = {0.0, 0.0};
     int valid_point_counter = 0;
-    #pragma unroll
+    PRAGMA_UNROLL
     for (int i = 0; i < MAX_ALL_POINTS; i++) {
         if (!isinf(points[i][0]) && !isinf(points[i][1])){
             centroid.x += points[i][0];

@@ -6,8 +6,10 @@
 #ifdef __CUDACC__
 #include <cuda_runtime.h>
 #define HOST_DEVICE __host__ __device__
+#define PRAGMA_UNROLL _Pragma("unroll")
 #else
 #define HOST_DEVICE
+#define PRAGMA_UNROLL
 #endif
 
 template <typename scalar_t>
@@ -62,7 +64,7 @@ namespace intersectionPoints{
                                                   const scalar_t *quad_1, 
                                                   scalar_t intersections[MAX_ALL_POINTS][2]) {
         int numIntersections = 0;
-        #pragma unroll
+        PRAGMA_UNROLL
         for (int i = 0; i < 4; ++i) {
             for (int j = 0; j < 4; ++j) {
                 Point<scalar_t> intersection;

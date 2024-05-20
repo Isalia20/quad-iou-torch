@@ -2,8 +2,10 @@
 #ifdef __CUDACC__
 #include <cuda_runtime.h>
 #define HOST_DEVICE __host__ __device__
+#define PRAGMA_UNROLL _Pragma("unroll")
 #else
 #define HOST_DEVICE
+#define PRAGMA_UNROLL
 #endif
 
 template <typename scalar_t>
@@ -17,7 +19,7 @@ HOST_DEVICE inline void findMinMaxQuadCoordinate(const scalar_t *box,
     max_val = box[coord_index];
 
     // Loop through the remaining points
-    #pragma unroll
+    PRAGMA_UNROLL
     for (int i = 1; i < 4; ++i) {
         scalar_t val = box[i * 2 + coord_index];
         if (val < min_val) {

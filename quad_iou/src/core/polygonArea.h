@@ -4,8 +4,10 @@
 #ifdef __CUDACC__
 #include <cuda_runtime.h>
 #define HOST_DEVICE __host__ __device__
+#define PRAGMA_UNROLL _Pragma("unroll")
 #else
 #define HOST_DEVICE
+#define PRAGMA_UNROLL
 #endif
 
 namespace polygonArea{
@@ -15,7 +17,7 @@ namespace polygonArea{
         const int vertices = 4;
 
         // Calculate the sum for the Gaussian formula
-        #pragma unroll
+        PRAGMA_UNROLL
         for (int i = 1, j = 0; i < vertices; ++i) {
             area += quadrilateral[j * 2] * quadrilateral[i * 2 + 1] - 
                     quadrilateral[i * 2] * quadrilateral[j * 2 + 1];
@@ -36,7 +38,7 @@ namespace polygonArea{
         int j = 0; // Index of the previous valid vertex
 
         // Initialize the previous valid vertex
-        #pragma unroll
+        PRAGMA_UNROLL
         for (int i = 0; i < n; ++i) {
             if (!isinf(polygon[i][0]) && !isinf(polygon[i][1])) {
                 j = i;
@@ -45,7 +47,7 @@ namespace polygonArea{
         }
 
         // Calculate the sum for the Gaussian formula
-        #pragma unroll
+        PRAGMA_UNROLL
         for (int i = j + 1; i < n; ++i) {
             if (isinf(polygon[i][0]) && isinf(polygon[i][1])) continue; // Skip invalid vertices
             area += (polygon[j][0] * polygon[i][1] - polygon[i][0] * polygon[j][1]);

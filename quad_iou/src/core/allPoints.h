@@ -5,14 +5,15 @@
 #ifdef __CUDACC__
 #include <cuda_runtime.h>
 #define HOST_DEVICE __host__ __device__
+#define PRAGMA_UNROLL _Pragma("unroll")
 #else
 #define HOST_DEVICE
+#define PRAGMA_UNROLL
 #endif
-
 
 template <typename scalar_t>
 HOST_DEVICE inline void fillArrayWithInfinity(scalar_t points[][2], int num_points){
-    #pragma unroll
+    PRAGMA_UNROLL
     for (int i = 0; i < num_points; i++){
         points[i][0] = INFINITY;
         points[i][1] = INFINITY;

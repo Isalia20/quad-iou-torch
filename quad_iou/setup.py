@@ -9,7 +9,10 @@ ext_modules = [
     CppExtension("quad_iou_cpu", [
         "src/core/quad_iou_tensors_bind_cpu.cpp",
         "src/core/quad_iou_tensors.cpp",
-    ])
+    ],
+    extra_compile_args=['-fopenmp'],
+    extra_link_args=['-fopenmp']
+    )
 ]
 
 if torch.cuda.is_available():
