@@ -2,9 +2,9 @@ import torch
 import quad_iou
 import pytest
 
-def create_quadrilateral_tensor(points, dtype):
+def create_quadrilateral_tensor(points, dtype, device):
     """Create a tensor for quadrilateral points, change its data type, and move it to the GPU."""
-    return torch.tensor(points, dtype=dtype).reshape(-1, 4, 2).cuda()
+    return torch.tensor(points, dtype=dtype).reshape(-1, 4, 2).to(device)
 
 DTYPE_IDX_MAP = {
     torch.float16: 0,
@@ -168,11 +168,14 @@ test_data = [
 
 @pytest.mark.parametrize("dtype", [torch.float16, torch.float32, torch.float64])
 @pytest.mark.parametrize("points1, points2, expected_iou", test_data)
-def test_calculate_iou(dtype, points1, points2, expected_iou):
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
+def test_calculate_iou(dtype, points1, points2, expected_iou, device):
     """Test the Intersection over Union (IoU) calculation for quadrilaterals with different tensor data types."""
-    tensor_1 = create_quadrilateral_tensor(points1, dtype)
-    tensor_2 = create_quadrilateral_tensor(points2, dtype)
-    expected_iou_tensor = torch.tensor([expected_iou[DTYPE_IDX_MAP[dtype]]], dtype=dtype).cuda()
+    if device == "cpu" and dtype == torch.float16:
+        return
+    tensor_1 = create_quadrilateral_tensor(points1, dtype, device)
+    tensor_2 = create_quadrilateral_tensor(points2, dtype, device)
+    expected_iou_tensor = torch.tensor([expected_iou[DTYPE_IDX_MAP[dtype]]], dtype=dtype).to(device)
 
     calculated_iou = quad_iou.calculate_iou(tensor_1, tensor_2, True).to(dtype).round(decimals=4)
     assert torch.allclose(calculated_iou, expected_iou_tensor, atol=1e-6), f"Calculated IoU: {calculated_iou}, Expected IoU: {expected_iou_tensor}"
