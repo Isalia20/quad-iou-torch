@@ -24,6 +24,9 @@ def calculate_iou(quad_0: Tensor, quad_1: Tensor, sort_input_quads: bool = True)
     This function computes the IoU for each pair of quadrilaterals from the two input tensors and returns a matrix
     of these IoU values.
     """
+    if not isinstance(quad_0, Tensor): raise ValueError(f"Expected input is Tensor but got {type(quad_0)}")
+    if not isinstance(quad_1, Tensor): raise ValueError(f"Expected input is a Tensor but got {type(quad_1)}")
+    if not isinstance(sort_input_quads, bool): raise ValueError(f"Expected sort_input_quads to be a boolean but got {type(sort_input_quads)}")
     if quad_0.device == quad_1.device:
         if quad_0.device.type == "cpu":
             return calculateIoUCPU(quad_0, quad_1, sort_input_quads)
