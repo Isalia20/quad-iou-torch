@@ -44,7 +44,7 @@ def main():
     num_iterations = 1000
     start_time = time.time()
     for _ in range(num_iterations):
-        iou_quad_iou = calculate_iou(quad1_tensor, quad2_tensor, False)
+        iou_quad_iou = calculate_iou(quad1_tensor, quad2_tensor, True)
     end_time = time.time()
     avg_time_quad = (end_time - start_time) / num_iterations
     print(f"quad_iou average time: {avg_time_quad:.10f} seconds")
@@ -55,7 +55,7 @@ def main():
     end_time = time.time()
     avg_time_shapely = (end_time - start_time) / num_iterations
     print(f"shapely average time: {avg_time_shapely:.10f} seconds")
-    print(f"quad_iou IoU: {iou_quad_iou[0]}")
+    print(f"quad_iou IoU: {iou_quad_iou.item()}")
     print(f"shapely IoU: {iou_shapely}")
 
 if __name__ == "__main__":
