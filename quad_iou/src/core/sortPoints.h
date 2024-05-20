@@ -1,17 +1,22 @@
 #define MAX_ALL_POINTS 16
 #define EPSILON 1e-6
 #include <torch/extension.h>
-#include "utils.cuh"
-
+#include "utils.h"
+#ifdef __CUDACC__
+#include <cuda_runtime.h>
+#define HOST_DEVICE __host__ __device__
+#else
+#define HOST_DEVICE
+#endif
 
 template <typename scalar_t>
-__device__ inline scalar_t computeAngle(const Point<scalar_t>& centroid, const Point<scalar_t>& p) {
+HOST_DEVICE inline scalar_t computeAngle(const Point<scalar_t>& centroid, const Point<scalar_t>& p) {
     // Use atan2f for float and atan2 for double
     return (sizeof(scalar_t) == sizeof(double)) ? atan2(p.y - centroid.y, p.x - centroid.x) : atan2f(p.y - centroid.y, p.x - centroid.x);
 }
 
 template <typename scalar_t>
-__device__ inline Point<scalar_t> findCentroid(scalar_t *points) {
+HOST_DEVICE inline Point<scalar_t> findCentroid(scalar_t *points) {
     Point<scalar_t> centroid = {0.0, 0.0};
     #pragma unroll
     for (int i = 0; i < 4; i++) {
@@ -24,7 +29,7 @@ __device__ inline Point<scalar_t> findCentroid(scalar_t *points) {
 }
 
 template <typename scalar_t>
-__device__ inline Point<scalar_t> findCentroid(scalar_t points[MAX_ALL_POINTS][2]) {
+HOST_DEVICE inline Point<scalar_t> findCentroid(scalar_t points[MAX_ALL_POINTS][2]) {
     Point<scalar_t> centroid = {0.0, 0.0};
     int valid_point_counter = 0;
     #pragma unroll
@@ -41,7 +46,7 @@ __device__ inline Point<scalar_t> findCentroid(scalar_t points[MAX_ALL_POINTS][2
 }
 
 template<typename scalar_t>
-__device__ inline void swapPoints(scalar_t *points, int i){
+HOST_DEVICE inline void swapPoints(scalar_t *points, int i){
     scalar_t tempX = points[i * 2];
     scalar_t tempY = points[i * 2 + 1];
     points[i * 2] = points[(i + 1) * 2];
@@ -51,7 +56,7 @@ __device__ inline void swapPoints(scalar_t *points, int i){
 }
 
 template<typename scalar_t>
-__device__ inline void swapPoints(scalar_t points[MAX_ALL_POINTS][2], int i){
+HOST_DEVICE inline void swapPoints(scalar_t points[MAX_ALL_POINTS][2], int i){
     scalar_t tempX = points[i][0];
     scalar_t tempY = points[i][1];
     points[i][0] = points[i + 1][0];
@@ -61,7 +66,7 @@ __device__ inline void swapPoints(scalar_t points[MAX_ALL_POINTS][2], int i){
 }
 
 template <typename scalar_t>
-__device__ inline bool comparePoints(const Point<scalar_t>& p1, const Point<scalar_t>& p2, const Point<scalar_t>& centroid) {
+HOST_DEVICE inline bool comparePoints(const Point<scalar_t>& p1, const Point<scalar_t>& p2, const Point<scalar_t>& centroid) {
     scalar_t angle1 = computeAngle(centroid, p1);
     scalar_t angle2 = computeAngle(centroid, p2);
 
@@ -77,7 +82,7 @@ __device__ inline bool comparePoints(const Point<scalar_t>& p1, const Point<scal
 
 namespace sortPoints{
     template <typename scalar_t>
-    __device__ inline void sortQuadPointsClockwise(scalar_t *points) {
+    HOST_DEVICE inline void sortQuadPointsClockwise(scalar_t *points) {
         // Calculate the centroid of the points
         Point<scalar_t> centroid = findCentroid(points);
         
@@ -102,7 +107,7 @@ namespace sortPoints{
     }
 
     template <typename scalar_t>
-    __device__ inline void sortPointsClockwise(scalar_t points[MAX_ALL_POINTS][2]) {
+    HOST_DEVICE inline void sortPointsClockwise(scalar_t points[MAX_ALL_POINTS][2]) {
         // Calculate the centroid of the points
         Point<scalar_t> centroid = findCentroid(points);
         

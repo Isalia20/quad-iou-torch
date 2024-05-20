@@ -1,10 +1,16 @@
 #define MAX_ALL_POINTS 16
 #include <torch/extension.h>
-#include "utils.cuh"
+#include "utils.h"
+#ifdef __CUDACC__
+#include <cuda_runtime.h>
+#define HOST_DEVICE __host__ __device__
+#else
+#define HOST_DEVICE
+#endif
 
 namespace polygonArea{
     template <typename scalar_t>
-    __device__ inline scalar_t calcQuadrilateralArea(const scalar_t *quadrilateral) {
+    HOST_DEVICE inline scalar_t calcQuadrilateralArea(const scalar_t *quadrilateral) {
         scalar_t area = 0.0;
         const int vertices = 4;
 
@@ -24,7 +30,7 @@ namespace polygonArea{
     }
 
     template <typename scalar_t>
-    __device__ inline scalar_t calcPolygonArea(scalar_t polygon[MAX_ALL_POINTS][2]) {
+    HOST_DEVICE inline scalar_t calcPolygonArea(scalar_t polygon[MAX_ALL_POINTS][2]) {
         scalar_t area = 0;
         int n = MAX_ALL_POINTS;
         int j = 0; // Index of the previous valid vertex

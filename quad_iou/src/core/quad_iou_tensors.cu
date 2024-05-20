@@ -20,19 +20,19 @@
 #define THREAD_COUNT_Y 16
 #include <torch/extension.h>
 #include <cmath>
-#include "polygonArea.cuh"
-#include "insidePoints.cuh"
-#include "intersectionPoints.cuh"
-#include "sortPoints.cuh"
-#include "allPoints.cuh"
-#include "simpleIntersectCheck.cuh"
-#include "checks.cuh"
+#include "polygonArea.h"
+#include "insidePoints.h"
+#include "intersectionPoints.h"
+#include "sortPoints.h"
+#include "allPoints.h"
+#include "simpleIntersectCheck.h"
+#include "checks.h"
 
 
 template <typename scalar_t>
 __device__ inline scalar_t intersectionArea(
-    const scalar_t *quad_0,
-    const scalar_t *quad_1
+    const scalar_t quad_0[QUAD_ELEMENTS],
+    const scalar_t quad_1[QUAD_ELEMENTS]
 ) {
     // If we know that quad_0 and quad_1 are not
     // intersecting even a tiny bit(minimum enclosing box check)
@@ -211,3 +211,5 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1, 
     }));
     return iou_matrix;
 }
+
+torch::Tensor calculateIoUCPUTorch(torch::Tensor quad_0, torch::Tensor quad_1, bool sort_input_quads){}

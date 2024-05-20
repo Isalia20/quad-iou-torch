@@ -2,22 +2,28 @@
 #define MAX_ALL_POINTS 16
 #define EPSILON 1e-6
 #include <torch/extension.h>
-#include "utils.cuh"
+#include "utils.h"
+#ifdef __CUDACC__
+#include <cuda_runtime.h>
+#define HOST_DEVICE __host__ __device__
+#else
+#define HOST_DEVICE
+#endif
 
 template <typename scalar_t>
-__device__ inline bool arePointsEqual(const Point<scalar_t>& p1, const Point<scalar_t>& p2) {
+HOST_DEVICE inline bool arePointsEqual(const Point<scalar_t>& p1, const Point<scalar_t>& p2) {
     return fabsf(p1.x - p2.x) < EPSILON && fabsf(p1.y - p2.y) < EPSILON;
 }
 
 template <typename scalar_t>
-__device__ inline int orientation(const Point<scalar_t>& p, const Point<scalar_t>& q, const Point<scalar_t>& r) {
+HOST_DEVICE inline int orientation(const Point<scalar_t>& p, const Point<scalar_t>& q, const Point<scalar_t>& r) {
     scalar_t val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
     if (fabsf(val) < EPSILON) return 0;  // colinear
     return (val > 0) ? 1 : 2;  // clockwise
 }
 
 template <typename scalar_t>
-__device__ inline bool doIntersect(const Point<scalar_t>& p1, const Point<scalar_t>& q1, const Point<scalar_t>& p2, const Point<scalar_t>& q2, Point<scalar_t>& intersection) {
+HOST_DEVICE inline bool doIntersect(const Point<scalar_t>& p1, const Point<scalar_t>& q1, const Point<scalar_t>& p2, const Point<scalar_t>& q2, Point<scalar_t>& intersection) {
     // Find the four orientations needed for general and
     // special cases
     int o1 = orientation(p1, q1, p2);
@@ -52,7 +58,7 @@ __device__ inline bool doIntersect(const Point<scalar_t>& p1, const Point<scalar
 
 namespace intersectionPoints{    
     template <typename scalar_t>
-    __device__ inline int findIntersectionPoints(const scalar_t *quad_0, 
+    HOST_DEVICE inline int findIntersectionPoints(const scalar_t *quad_0, 
                                                   const scalar_t *quad_1, 
                                                   scalar_t intersections[MAX_ALL_POINTS][2]) {
         int numIntersections = 0;

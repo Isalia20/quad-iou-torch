@@ -1,9 +1,15 @@
 #define MAX_ALL_POINTS 16
 #include <torch/extension.h>
-#include "utils.cuh"
+#include "utils.h"
+#ifdef __CUDACC__
+#include <cuda_runtime.h>
+#define HOST_DEVICE __host__ __device__
+#else
+#define HOST_DEVICE
+#endif
 
 template <typename scalar_t>
-__device__ inline scalar_t findMaxQuadCoordinate(const scalar_t *box, Coordinate coord){
+HOST_DEVICE inline scalar_t findMaxQuadCoordinate(const scalar_t *box, Coordinate coord){
     // Find the maximum x-coordinate or y-coordinate of the quadrilateral based on the coord value
     scalar_t max_value = box[static_cast<int>(coord)];
     #pragma unroll
@@ -16,7 +22,7 @@ __device__ inline scalar_t findMaxQuadCoordinate(const scalar_t *box, Coordinate
 }
 
 template <typename scalar_t>
-__device__ inline int isPointInsideQuadrilateral(const Point<scalar_t>& point_to_check, const scalar_t *box) {
+HOST_DEVICE inline int isPointInsideQuadrilateral(const Point<scalar_t>& point_to_check, const scalar_t *box) {
     scalar_t max_x = findMaxQuadCoordinate(box, Coordinate::X);
     scalar_t max_y = findMaxQuadCoordinate(box, Coordinate::Y);
     // If the point's x-coordinate is greater than the max x-coordinate, it's outside
@@ -44,7 +50,7 @@ __device__ inline int isPointInsideQuadrilateral(const Point<scalar_t>& point_to
 
 namespace insidePoints{
     template <typename scalar_t>
-    __device__ inline void findPointsInside(const scalar_t *quad_0, 
+    HOST_DEVICE inline void findPointsInside(const scalar_t *quad_0, 
                                             const scalar_t *quad_1, 
                                             scalar_t inside_points[MAX_ALL_POINTS][2],
                                             int numIntersections) {
