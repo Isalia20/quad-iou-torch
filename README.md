@@ -41,4 +41,6 @@ You can try the package on Google Colab:
 - [ ] Add more tests in `tests/test.py` for dealing with 1x1 quadrilateral without sorting `sort_input_quads=False`
 - [x] Make package available on pypi
 - [x] CPU version
+- [ ] MPS version
 - [ ] Look into why Pragma is ignored during compilation
+
