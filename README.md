@@ -7,7 +7,7 @@ Torch extension for calculating IoU (Intersection over Union) for quadrilaterals
 **NOTE:** Installation and usage of this package requires gcc and torch installed. If you'd like to use cuda version NVIDIA GPU, gcc, nvcc and torch installation is mandatory.
 
 1. Run `pip install quad_iou`
-2. To confirm installation, run `python tryout_scripts/usage.py` to test it out. Expected output is `0.25`
+2. To confirm installation, run `python tryout_scripts/usage_cpu.py` to test it out. Expected output is `0.25`
 
 ## Example usage
 ```
