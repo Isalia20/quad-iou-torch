@@ -40,7 +40,7 @@ You can try the package on Google Colab:
 
 Shapely is one of the libraries that can be used for IoU (Intersection over Union) calculations for quadrilaterals in Python. To evaluate the performance, we compare our implementation with Shapely's, attempting to utilize list comprehensions as much as possible to avoid slowing down the Shapely code. The results of this comparison are shown below.
 
-![Comparison][comparison/iou_benchmark_plot.jpg]
+![Comparison][comparison/iou_benchmark_plot.png]
 
 ## TODO
 - [ ] Add more tests in `tests/test.py` for dealing with MxN quadrilaterals, now tests are only for 1->1 quadrilaterals
