@@ -32,6 +32,11 @@ b = b.reshape(-1, 4, 2)
 iou = quad_iou.calculate_iou(a, b, sort_input_quads=True)
 ```
 
+## Example usage with Colab:
+You can try the package on Google Colab:
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1Po7oJywlEXEeMJZRqxVNH3jEpRUfA2d_?usp=sharing)
+
 ## Comparison with Shapely library
 
 While CPUs and GPUs are not to be compared for speed, we provide a script to demonstrate the potential speedup when using a GPU. To compare the execution time of calculating the IoU for quadrilaterals using the `Shapely` library versus our GPU-accelerated implementation, run `python tryout_scripts/comparison.py`
