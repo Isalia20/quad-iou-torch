@@ -25,7 +25,7 @@ if torch.cuda.is_available():
 
 setup(
     name="quad_iou",
-    version="0.1.0",
+    version="0.2.0",
     author="Irakli Salia",
     author_email="irakli.salia854@gmail.com",
     description="Torch extension for calculating IoU(Intersection over Union) for quadrilaterals(MxN)",
