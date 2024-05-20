@@ -7,7 +7,7 @@ with open('README.md', 'r', encoding='utf-8') as fh:
 
 ext_modules = [
     CppExtension("quad_iou_cpu", [
-        "src/core/quad_iou_tensors_bind_torch.cpp",
+        "src/core/quad_iou_tensors_bind_cpu.cpp",
         "src/core/quad_iou_tensors.cpp",
     ])
 ]
@@ -15,7 +15,7 @@ ext_modules = [
 if torch.cuda.is_available():
     ext_modules.append(
         CUDAExtension('quad_iou_cuda', [
-            'src/core/quad_iou_tensors_bind_torch.cpp',
+            'src/core/quad_iou_tensors_bind_cuda.cpp',
             'src/core/quad_iou_tensors.cu',
         ])
     )

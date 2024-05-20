@@ -211,5 +211,3 @@ torch::Tensor calculateIoUCudaTorch(torch::Tensor quad_0, torch::Tensor quad_1, 
     }));
     return iou_matrix;
 }
-
-torch::Tensor calculateIoUCPUTorch(torch::Tensor quad_0, torch::Tensor quad_1, bool sort_input_quads){}
